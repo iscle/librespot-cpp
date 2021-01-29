@@ -5,6 +5,6 @@
 #ifndef LIBRESPOT_C_HTTP_H
 #define LIBRESPOT_C_HTTP_H
 
-int http_get(char *url, char **buf);
+std::string http_get(const char *url, const char* params);
 
 #endif //LIBRESPOT_C_HTTP_H

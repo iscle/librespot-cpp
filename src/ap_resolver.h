@@ -5,12 +5,12 @@
 #ifndef LIBRESPOT_C_AP_RESOLVER_H
 #define LIBRESPOT_C_AP_RESOLVER_H
 
-char *ap_resolver_get_dealer(void);
+#include <string>
 
-char *ap_resolver_get_spclient(void);
+std::string & ap_resolver_get_dealer();
 
-char *ap_resolver_get_accesspoint(void);
+std::string & ap_resolver_get_spclient();
 
-void ap_resolver_destroy(void);
+std::string & ap_resolver_get_accesspoint();
 
 #endif //LIBRESPOT_C_AP_RESOLVER_H
