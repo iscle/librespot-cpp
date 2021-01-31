@@ -7,10 +7,18 @@
 
 #include <openssl/dh.h>
 
-typedef struct {
+class DiffieHellman {
+public:
+    DiffieHellman();
+    uint8_t *get_server_secret();
+    int get_server_secret_length() const;
+
+private:
     DH *dh;
-    BIGNUM *public_key;
-    BIGNUM *private_key;
-} dh_t;
+    const BIGNUM *bn_private_key;
+    const BIGNUM *bn_public_key;
+    uint8_t *public_key;
+    int public_key_length;
+};
 
 #endif //LIBRESPOT_C_DIFFIE_HELLMAN_H

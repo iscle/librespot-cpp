@@ -4,14 +4,15 @@
 
 #include <cpp-httplib/httplib.h>
 
-std::string http_get(const char *url, const char* params) {
+std::string http_get(const char *url, const char *params) {
     httplib::Client cli(url);
     httplib::Headers headers = {
-            { "User-Agent", "librespot-c++/1.0" }
+            {"User-Agent", "librespot-c++/1.0"}
     };
-    auto res = cli.Get(params, headers);
-    if (res->status != 200)
-        throw "Failed to get data!";
+
+    httplib::Result res = cli.Get(params, headers);
+
+    // TODO: Check for res->status
 
     return res->body;
 }

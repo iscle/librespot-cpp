@@ -1,18 +1,24 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(librespot_c CXX)
-
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(librespot_c src/main.cpp
-        src/session.c src/session.h
+find_package(PkgConfig REQUIRED)
+pkg_search_module(OPENSSL REQUIRED openssl)
+include_directories(${OPENSSL_INCLUDE_DIRS})
+message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
+
+add_subdirectory(proto)
+add_executable(librespot_c
+        src/main.cpp
+        src/session.cpp src/session.h
         src/ap_resolver.cpp src/ap_resolver.h
         src/network/http.cpp src/network/http.h
         lib/cjson/cJSON.c lib/cjson/cJSON.h
-        src/json.c src/json.h
         src/data/asprintf.c src/data/asprintf.h
-        src/diffie_hellman.c src/diffie_hellman.h
-        lib/dhexchange/dhexchange.c lib/dhexchange/dhexchange.h src/data/base62.cpp src/data/base62.h)
+        src/diffie_hellman.cpp src/diffie_hellman.h
+        src/data/base62.cpp src/data/base62.h
+        src/version.cpp src/version.h)
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_c PUBLIC lib/)
-
-target_link_libraries(librespot_c curl)
+target_link_libraries(librespot_c proto ${OPENSSL_LIBRARIES})

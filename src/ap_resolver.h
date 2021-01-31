@@ -7,10 +7,10 @@
 
 #include <string>
 
-std::string & ap_resolver_get_dealer();
+std::string &ap_resolver_get_dealer();
 
-std::string & ap_resolver_get_spclient();
+std::string &ap_resolver_get_spclient();
 
-std::string & ap_resolver_get_accesspoint();
+std::string &ap_resolver_get_accesspoint();
 
 #endif //LIBRESPOT_C_AP_RESOLVER_H
