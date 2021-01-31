@@ -10,13 +10,12 @@
 class DiffieHellman {
 public:
     DiffieHellman();
-    uint8_t *get_server_secret();
-    int get_server_secret_length() const;
+    uint8_t *get_public_key();
+    int get_public_key_length() const;
 
 private:
-    DH *dh;
     const BIGNUM *bn_private_key;
-    const BIGNUM *bn_public_key;
+    BIGNUM *bn_public_key;
     uint8_t *public_key;
     int public_key_length;
 };

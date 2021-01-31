@@ -55,7 +55,8 @@ void Session::connect() {
 
     client_hello.set_allocated_build_info(&standard_build_info);
     client_hello.add_cryptosuites_supported(spotify::CRYPTO_SUITE_SHANNON);
-    client_hello.mutable_login_crypto_hello()->mutable_diffie_hellman()->set_gc(dh.get_server_secret(), dh.get_server_secret_length());
+    client_hello.mutable_login_crypto_hello()->mutable_diffie_hellman()->set_gc(dh.get_public_key(),
+                                                                                dh.get_public_key_length());
     client_hello.mutable_login_crypto_hello()->mutable_diffie_hellman()->set_server_keys_known(1);
     client_hello.set_client_nonce(nonce, 16);
     client_hello.set_padding(&padding, 1);
@@ -73,6 +74,7 @@ void Session::connect() {
 
     spotify::APResponseMessage ap_response_message;
     ap_response_message.ParseFromArray(buffer, length);
+    delete[] buffer;
     const std::string gs = ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs();
 
 }
@@ -89,7 +91,7 @@ Session::ConnectionHolder::ConnectionHolder(const std::string &addr, const std::
     std::string tmp_addr = "gew1-accesspoint-e-0fk9.ap.spotify.com";
     std::string tmp_port = "443";
 
-    hints.ai_family = AF_INET;
+    hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
