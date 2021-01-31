@@ -58,6 +58,28 @@ DiffieHellman::DiffieHellman() {
     }
 }
 
+int DiffieHellman::compute_shared_key(std::string remote_key, uint8_t **shared_key) {
+    int ret;
+    BN_CTX *ctx = BN_CTX_new();
+    const BIGNUM *bn_p = BN_bin2bn(P_BYTES, sizeof(P_BYTES), nullptr);
+    const BIGNUM *bn_remote_key = BN_bin2bn((const unsigned char *) remote_key.c_str(), remote_key.size(), nullptr);
+    BIGNUM *bn_shared_key = BN_new();
+    if (BN_mod_exp(bn_shared_key, bn_remote_key, bn_private_key, bn_p, ctx) != 1) {
+        // TODO: Handle error
+    }
+
+    *shared_key = (uint8_t *) OPENSSL_malloc(BN_num_bytes(bn_shared_key));
+    if (*shared_key == nullptr) {
+
+    }
+    ret = BN_bn2bin(bn_shared_key, *shared_key);
+    if (ret < 0) {
+
+    }
+
+    return ret;
+}
+
 uint8_t *DiffieHellman::get_public_key() {
     return public_key;
 }

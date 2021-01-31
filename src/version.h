@@ -6,13 +6,18 @@
 #define LIBRESPOT_C_VERSION_H
 
 #include <proto/keyexchange.pb.h>
+#include <proto/authentication.pb.h>
 
 class Version {
 private:
     static spotify::Platform platform();
 
 public:
-    static spotify::BuildInfo standard_build_info();
+    static spotify::BuildInfo * build_info();
+
+    static spotify::SystemInfo system_info();
+
+    static std::string version_string();
 };
 
 #endif //LIBRESPOT_C_VERSION_H

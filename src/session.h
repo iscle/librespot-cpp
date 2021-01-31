@@ -6,42 +6,29 @@
 #define LIBRESPOT_C_SESSION_H
 
 #include <string>
+#include <vector>
+#include <proto/authentication.pb.h>
+#include "crypto/cipher_pair.h"
+#include "utils.h"
 
 class Session {
+public:
+    static Session *create();
+    void connect();
+    void authenticate(const spotify::LoginCredentials&);
+
 private:
-
-    Session(const std::string& addr);
-
     class Configuration {
 
     };
 
-    class ConnectionHolder {
-    public:
-        static ConnectionHolder create(const std::string &addr);
+    utils::ConnectionHolder conn;
+    std::atomic<bool> auth_lock;
+    CipherPair *cipher_pair;
 
-        void write_int(int data) const;
-
-        void write(const uint8_t *data, size_t size) const;
-
-        void write(const std::string &data) const;
-
-        void write_byte(uint8_t data) const;
-
-        int read_int() const;
-
-        void read_fully(uint8_t *data, size_t len);
-
-    private:
-        int sockfd;
-
-        ConnectionHolder(const std::string &addr, const std::string &port);
-    };
-
-    ConnectionHolder conn;
-public:
-    static Session create();
-    void connect();
+    Session(const std::string &addr);
+    void authenticate_partial(spotify::LoginCredentials& credentials, bool remove_lock);
+    void send_unchecked(Packet::Type cmd, uint8_t *payload, size_t payload_size);
 };
 
 #endif //LIBRESPOT_C_SESSION_H

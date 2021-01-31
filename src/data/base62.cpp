@@ -78,9 +78,8 @@ std::vector<uint8_t> base62_decode(const std::vector<uint8_t> &data, size_t targ
 static void translate_encode(std::vector<uint8_t> &data, size_t data_size) {
     size_t i;
 
-    for (i = 0; i < data_size; i++) {
+    for (i = 0; i < data_size; i++)
         data[i] = ALPHABET[data[i]];
-    }
 }
 
 std::vector<uint8_t> base62_encode(std::vector<uint8_t> &data, size_t target_size) {

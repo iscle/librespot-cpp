@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16.3)
-project(librespot_c CXX)
+project(librespot_c)
 set(CMAKE_CXX_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
@@ -14,10 +14,14 @@ add_executable(librespot_c
         src/ap_resolver.cpp src/ap_resolver.h
         src/network/http.cpp src/network/http.h
         lib/cjson/cJSON.c lib/cjson/cJSON.h
+        lib/shannon/ShannonRef.c lib/shannon/Shannon.h
         src/data/asprintf.c src/data/asprintf.h
         src/diffie_hellman.cpp src/diffie_hellman.h
         src/data/base62.cpp src/data/base62.h
-        src/version.cpp src/version.h)
+        src/version.cpp src/version.h
+        src/crypto/cipher_pair.cpp  src/crypto/cipher_pair.h
+        src/crypto/packet.cpp src/crypto/packet.h
+        src/utils.cpp src/utils.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_c PUBLIC lib/)
