@@ -183,6 +183,63 @@ void Session::authenticate(const spotify::LoginCredentials &credentials) {
     authenticate_partial((spotify::LoginCredentials &) credentials, false);
 }
 
+void session_packet_receiver(Session *session) {
+    std::cout << "Session::session_packet_receiver started" << std::endl;
+
+    while (session->running) {
+        Packet packet = session->cipher_pair->receive_encoded(session->conn);
+
+        if (!session->running) break;
+
+        switch (packet.cmd) {
+            case Packet::Type::Ping: {
+
+                break;
+            }
+            case Packet::Type::PongAck: {
+                // Silent
+                break;
+            }
+            case Packet::Type::CountryCode: {
+                std::string country_code((char *) packet.payload, packet.payload_size);
+                std::cout << "Received CountryCode: " << country_code << std::endl;
+                break;
+            }
+            case Packet::Type::LicenseVersion: {
+
+                break;
+            }
+            case Packet::Type::Unknown_0x10: {
+                std::cout << "Received 0x10" << std::endl;
+                break;
+            }
+            case Packet::Type::MercurySub:
+            case Packet::Type::MercuryUnsub:
+            case Packet::Type::MercuryEvent:
+            case Packet::Type::MercuryReq: {
+                session->mercury()->dispatch(packet);
+                break;
+            }
+            case Packet::Type::AesKey:
+            case Packet::Type::AesKeyError: {
+                session->audio_key()->dispatch(packet);
+                break;
+            }
+            case Packet::Type::ChannelError:
+            case Packet::Type::StreamChunkRes: {
+                session->channel()->dispatch(packet);
+                break;
+            }
+            default: {
+                std::cout << "Skipping 0x" << std::hex << packet.cmd << std::endl;
+                break;
+            }
+        }
+    }
+
+    std::cout << "Session::session_packet_receiver stopped" << std::endl;
+}
+
 void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock) {
     if (cipher_pair == nullptr) {
         // TODO: Handle error
@@ -204,6 +261,32 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     Packet packet = cipher_pair->receive_encoded(conn);
     if (packet.is(Packet::Type::APWelcome)) {
         std::cout << "Authentication success!" << std::endl;
+        ap_welcome.ParseFromArray(packet.payload, packet.payload_size);
+        receiver = new std::thread(session_packet_receiver, this);
+
+        uint8_t bytes0x0f[20];
+        RAND_bytes(bytes0x0f, sizeof(bytes0x0f));
+        send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f, sizeof(bytes0x0f));
+
+        utils::ByteArray preferred_locale;
+        preferred_locale.write_byte(0x00);
+        preferred_locale.write_byte(0x00);
+        preferred_locale.write_byte(0x10);
+        preferred_locale.write_byte(0x00);
+        preferred_locale.write_byte(0x02);
+        preferred_locale.write("preferred-locale");
+        preferred_locale.write("en");
+
+        uint8_t *preferred_locale_bytes;
+        size_t preferred_locale_size = preferred_locale.array(&preferred_locale_bytes);
+        send_unchecked(Packet::Type::PreferredLocale, preferred_locale_bytes, preferred_locale_size);
+
+        if (remove_lock) {
+            // TODO: Synchronize with auth_lock
+            auth_lock = false;
+            // TODO: Notify all auth_lock
+        }
+
     } else if (packet.is(Packet::Type::AuthFailure)) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;
@@ -217,4 +300,31 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
 
 void Session::send_unchecked(Packet::Type cmd, uint8_t *payload, size_t payload_size) {
     cipher_pair->send_encoded(conn, cmd, payload, payload_size);
+}
+
+MercuryClient *Session::mercury() const {
+    // waitAuthLock();
+    if (mercury_client == nullptr) {
+        // TODO: Handle error
+        std::cout << "Session isn't authenticated" << std::endl;
+    }
+    return mercury_client;
+}
+
+AudioKeyManager *Session::audio_key() const {
+    // waitAuthLock();
+    if (audio_key_manager == nullptr) {
+        // TODO: Handle error
+        std::cout << "Session isn't authenticated" << std::endl;
+    }
+    return audio_key_manager;
+}
+
+ChannelManager *Session::channel() const {
+    // waitAuthLock();
+    if (channel_manager == nullptr) {
+        // TODO: Handle error
+        std::cout << "Session isn't authenticated" << std::endl;
+    }
+    return channel_manager;
 }

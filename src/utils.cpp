@@ -40,7 +40,6 @@ void utils::ByteArray::write_short(short data) {
 }
 
 
-
 utils::ConnectionHolder::ConnectionHolder(const std::string &addr, const std::string &port) {
     struct addrinfo hints = {0};
     struct addrinfo *addrs;

@@ -47,7 +47,9 @@ public:
     uint8_t cmd;
     uint8_t *payload;
     size_t payload_size;
+
     Packet(uint8_t cmd, uint8_t *payload, size_t payload_size);
+
     bool is(Type type) const;
 };
 

@@ -21,8 +21,8 @@ add_executable(librespot_c
         src/version.cpp src/version.h
         src/crypto/cipher_pair.cpp  src/crypto/cipher_pair.h
         src/crypto/packet.cpp src/crypto/packet.h
-        src/utils.cpp src/utils.h)
+        src/utils.cpp src/utils.h src/mercury/mercury_client.cpp src/mercury/mercury_client.h src/audio/audio_key_manager.cpp src/audio/audio_key_manager.h src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_c PUBLIC lib/)
-target_link_libraries(librespot_c proto ${OPENSSL_LIBRARIES})
+target_link_libraries(librespot_c proto ${OPENSSL_LIBRARIES} pthread)
