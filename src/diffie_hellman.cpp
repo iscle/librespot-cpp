@@ -76,7 +76,7 @@ DiffieHellman::~DiffieHellman() {
     OPENSSL_free(public_key);
 }
 
-int DiffieHellman::compute_shared_key(const std::string& remote_key, uint8_t **shared_key) {
+int DiffieHellman::compute_shared_key(const std::string &remote_key, uint8_t **shared_key) {
     int ret;
     BN_CTX *ctx = BN_CTX_new();
     BIGNUM *bn_p = BN_bin2bn(P_BYTES, sizeof(P_BYTES), nullptr);

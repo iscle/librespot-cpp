@@ -11,11 +11,14 @@
 class DiffieHellman {
 public:
     DiffieHellman();
+
     ~DiffieHellman();
 
     uint8_t *get_public_key();
+
     int get_public_key_length() const;
-    int compute_shared_key(const std::string& remote_key, uint8_t **shared_key);
+
+    int compute_shared_key(const std::string &remote_key, uint8_t **shared_key);
 
 private:
     BIGNUM *bn_private_key;

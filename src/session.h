@@ -21,15 +21,19 @@ public:
     CipherPair *cipher_pair;
     utils::ConnectionHolder conn;
 
-    static Session *create();
+    explicit Session(const std::string &addr);
+
+    static std::unique_ptr<Session> create();
 
     void connect();
 
     void authenticate(const spotify::LoginCredentials &);
 
-    MercuryClient *mercury() const;
-    AudioKeyManager *audio_key() const;
-    ChannelManager *channel() const;
+    const std::unique_ptr<MercuryClient> & mercury() const;
+
+    const std::unique_ptr<AudioKeyManager> & audio_key() const;
+
+    const std::unique_ptr<ChannelManager> & channel() const;
 
 private:
     class Configuration {
@@ -38,12 +42,10 @@ private:
 
     std::atomic<bool> auth_lock;
     spotify::APWelcome ap_welcome;
-    std::thread *receiver;
-    MercuryClient *mercury_client;
-    AudioKeyManager *audio_key_manager;
-    ChannelManager *channel_manager;
-
-    Session(const std::string &addr);
+    std::unique_ptr<std::thread> receiver;
+    std::unique_ptr<MercuryClient> mercury_client;
+    std::unique_ptr<AudioKeyManager> audio_key_manager;
+    std::unique_ptr<ChannelManager> channel_manager;
 
     void authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock);
 

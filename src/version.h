@@ -13,7 +13,7 @@ private:
     static spotify::Platform platform();
 
 public:
-    static spotify::BuildInfo * build_info();
+    static spotify::BuildInfo build_info();
 
     static spotify::SystemInfo system_info();
 

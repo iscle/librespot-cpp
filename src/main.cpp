@@ -4,7 +4,7 @@
 int main() {
     //GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    Session *session = Session::create();
+    std::unique_ptr<Session> session = Session::create();
     session->connect();
 
     spotify::LoginCredentials login_credentials;
@@ -13,7 +13,6 @@ int main() {
     login_credentials.set_auth_data("");
     session->authenticate(login_credentials);
 
-    delete session;
     //google::protobuf::ShutdownProtobufLibrary();
     return 0;
 }

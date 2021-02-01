@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(librespot_cpp)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OPENSSL REQUIRED openssl)

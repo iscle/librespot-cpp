@@ -9,6 +9,8 @@
 #include "utils.h"
 #include <vector>
 #include <cstdint>
+#include <iostream>
+#include <memory>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -48,9 +50,7 @@ void Session::connect() {
     DiffieHellman dh;
 
     // Send ClientHello
-    if (RAND_bytes(nonce, sizeof(nonce)) != 1) {
-        // TODO: Handle error
-    }
+    RAND_bytes(nonce, sizeof(nonce));
 
     client_hello.set_allocated_build_info(Version::build_info());
     client_hello.add_cryptosuites_supported(spotify::CRYPTO_SUITE_SHANNON);
@@ -175,8 +175,8 @@ void Session::connect() {
     std::cout << "Connected successfully!" << std::endl;
 }
 
-Session *Session::create() {
-    return new Session(ApResolver::get_instance().get_accesspoint());
+std::unique_ptr<Session> Session::create() {
+    return std::make_unique<Session>(ApResolver::get_instance().get_accesspoint());
 }
 
 void Session::authenticate(const spotify::LoginCredentials &credentials) {
@@ -262,7 +262,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     if (packet.is(Packet::Type::APWelcome)) {
         std::cout << "Authentication success!" << std::endl;
         ap_welcome.ParseFromArray(packet.payload, packet.payload_size);
-        receiver = new std::thread(session_packet_receiver, this);
+        receiver = std::make_unique<std::thread>(session_packet_receiver, this);
 
         uint8_t bytes0x0f[20];
         RAND_bytes(bytes0x0f, sizeof(bytes0x0f));
@@ -302,7 +302,7 @@ void Session::send_unchecked(Packet::Type cmd, uint8_t *payload, size_t payload_
     cipher_pair->send_encoded(conn, cmd, payload, payload_size);
 }
 
-MercuryClient *Session::mercury() const {
+const std::unique_ptr<MercuryClient> &Session::mercury() const {
     // waitAuthLock();
     if (mercury_client == nullptr) {
         // TODO: Handle error
@@ -311,7 +311,7 @@ MercuryClient *Session::mercury() const {
     return mercury_client;
 }
 
-AudioKeyManager *Session::audio_key() const {
+const std::unique_ptr<AudioKeyManager> &Session::audio_key() const {
     // waitAuthLock();
     if (audio_key_manager == nullptr) {
         // TODO: Handle error
@@ -320,7 +320,7 @@ AudioKeyManager *Session::audio_key() const {
     return audio_key_manager;
 }
 
-ChannelManager *Session::channel() const {
+const std::unique_ptr<ChannelManager> &Session::channel() const {
     // waitAuthLock();
     if (channel_manager == nullptr) {
         // TODO: Handle error
