@@ -13,11 +13,11 @@ private:
     static spotify::Platform platform();
 
 public:
-    static spotify::BuildInfo build_info();
-
-    static spotify::SystemInfo system_info();
+    static void build_info(spotify::BuildInfo *build_info);
 
     static std::string version_string();
+
+    static void system_info(spotify::SystemInfo *system_info);
 };
 
 #endif //LIBRESPOT_C_VERSION_H

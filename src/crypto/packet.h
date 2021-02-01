@@ -5,9 +5,9 @@
 #ifndef LIBRESPOT_C_PACKET_H
 #define LIBRESPOT_C_PACKET_H
 
-
-#include <stdint-gcc.h>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
 
 class Packet {
 public:
@@ -45,12 +45,10 @@ public:
     };
 
     uint8_t cmd;
-    uint8_t *payload;
+    std::shared_ptr<uint8_t[]> payload;
     size_t payload_size;
 
-    Packet(uint8_t cmd, uint8_t *payload, size_t payload_size);
-
-    bool is(Type type) const;
+    Packet(uint8_t cmd, std::shared_ptr<uint8_t[]> &payload, size_t payload_size);
 };
 
 

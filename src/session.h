@@ -18,10 +18,11 @@
 class Session {
 public:
     bool running;
-    CipherPair *cipher_pair;
+    std::unique_ptr<CipherPair> cipher_pair;
     utils::ConnectionHolder conn;
 
     explicit Session(const std::string &addr);
+    ~Session();
 
     static std::unique_ptr<Session> create();
 

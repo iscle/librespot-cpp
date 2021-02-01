@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include "cipher_pair.h"
 #include "../utils.h"
 
@@ -47,10 +48,9 @@ Packet CipherPair::receive_encoded(utils::ConnectionHolder &conn) {
 
     uint8_t cmd = header_bytes[0];
     auto payload_size = (short) ((header_bytes[1] << 8) | (header_bytes[2] << 0));
-    auto *payload_bytes = new uint8_t[payload_size];
-    conn.read_fully(payload_bytes, payload_size);
-    shn_decrypt(&recv_cipher_ctx, payload_bytes, payload_size);
-    delete[] payload_bytes;
+    auto payload_bytes = std::make_shared<uint8_t[]>(payload_size);
+    conn.read_fully(payload_bytes.get(), payload_size);
+    shn_decrypt(&recv_cipher_ctx, payload_bytes.get(), payload_size);
 
     uint8_t mac[4];
     conn.read_fully(mac, sizeof(mac));
