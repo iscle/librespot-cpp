@@ -94,12 +94,14 @@ int DiffieHellman::compute_shared_key(const std::string& remote_key, uint8_t **s
 
     *shared_key = (uint8_t *) OPENSSL_malloc(BN_num_bytes(bn_shared_key));
     if (*shared_key == nullptr) {
+        // TODO: Handle error
         BN_free(bn_shared_key);
     }
 
     ret = BN_bn2bin(bn_shared_key, *shared_key);
     BN_free(bn_shared_key);
     if (ret < 0) {
+        // TODO: Handle error
         OPENSSL_free(*shared_key);
         *shared_key = nullptr;
     }

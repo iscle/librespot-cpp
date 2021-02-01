@@ -176,7 +176,7 @@ void Session::connect() {
 }
 
 Session *Session::create() {
-    return new Session(ap_resolver_get_accesspoint());
+    return new Session(ApResolver::get_instance().get_accesspoint());
 }
 
 void Session::authenticate(const spotify::LoginCredentials &credentials) {

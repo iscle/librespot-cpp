@@ -33,7 +33,7 @@ namespace utils {
 
         void write_int(int data) const;
 
-        void write(const uint8_t *data, size_t size) const;
+        ssize_t write(const uint8_t *data, size_t size) const;
 
         void write(const std::string &data) const;
 

@@ -125,6 +125,7 @@ int utils::ConnectionHolder::read_int() const {
 
     if (ret != 4) {
         // TODO: Handle error
+        std::cout << "read_int() failed!" << std::endl;
     }
 
     return data;
@@ -137,13 +138,15 @@ void utils::ConnectionHolder::read_fully(uint8_t *data, size_t len) const {
         int count = ::read(this->sockfd, data + n, len - n);
         if (count < 0) {
             // TODO: Handle error
+            std::cout << "read_fully() failed!" << std::endl;
+            continue;
         }
         n += count;
     }
 }
 
-void utils::ConnectionHolder::write(const uint8_t *data, size_t size) const {
-    ::write(sockfd, data, size);
+ssize_t utils::ConnectionHolder::write(const uint8_t *data, size_t size) const {
+    return ::write(sockfd, data, size);
 }
 
 int utils::ConnectionHolder::read(uint8_t *data, size_t len) const {
