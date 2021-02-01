@@ -189,7 +189,6 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         std::cout << "Connection not established!" << std::endl;
     }
 
-    spotify::SystemInfo system_info = Version::system_info();
     spotify::ClientResponseEncrypted client_response_encrypted;
     client_response_encrypted.set_allocated_login_credentials(&credentials);
     client_response_encrypted.mutable_system_info()->set_os(spotify::OS_LINUX);
@@ -200,7 +199,6 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
 
     auto client_response_string = client_response_encrypted.SerializeAsString();
     client_response_encrypted.release_login_credentials();
-    client_response_encrypted.release_system_info();
     send_unchecked(Packet::Type::Login, (uint8_t *) client_response_string.c_str(), client_response_string.size());
 
     Packet packet = cipher_pair->receive_encoded(conn);
