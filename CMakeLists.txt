@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16.3)
-project(librespot_c)
+project(librespot_cpp)
 set(CMAKE_CXX_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
@@ -8,7 +8,7 @@ include_directories(${OPENSSL_INCLUDE_DIRS})
 message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
 
 add_subdirectory(proto)
-add_executable(librespot_c
+add_executable(librespot_cpp
         src/main.cpp
         src/session.cpp src/session.h
         src/ap_resolver.cpp src/ap_resolver.h
@@ -21,8 +21,11 @@ add_executable(librespot_c
         src/version.cpp src/version.h
         src/crypto/cipher_pair.cpp  src/crypto/cipher_pair.h
         src/crypto/packet.cpp src/crypto/packet.h
-        src/utils.cpp src/utils.h src/mercury/mercury_client.cpp src/mercury/mercury_client.h src/audio/audio_key_manager.cpp src/audio/audio_key_manager.h src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h)
+        src/utils.cpp src/utils.h
+        src/mercury/mercury_client.cpp src/mercury/mercury_client.h
+        src/audio/audio_key_manager.cpp src/audio/audio_key_manager.h
+        src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
-target_include_directories(librespot_c PUBLIC lib/)
-target_link_libraries(librespot_c proto ${OPENSSL_LIBRARIES} pthread)
+target_include_directories(librespot_cpp PUBLIC lib/)
+target_link_libraries(librespot_cpp proto ${OPENSSL_LIBRARIES} pthread)

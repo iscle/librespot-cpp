@@ -32,5 +32,5 @@ spotify::SystemInfo Version::system_info() {
     system_info.set_system_information_string(version_string() + " 0.0.1; C++11; Linux");
     system_info.set_device_id(utils::generate_device_id());
 
-
+    return system_info;
 }
