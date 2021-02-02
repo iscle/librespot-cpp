@@ -13,7 +13,6 @@ add_executable(librespot_cpp
         src/core/session.cpp src/core/session.h
         src/core/ap_resolver.cpp src/core/ap_resolver.h
         src/network/http.cpp src/network/http.h
-        lib/cjson/cJSON.c lib/cjson/cJSON.h
         lib/shannon/ShannonRef.c lib/shannon/Shannon.h
         src/crypto/diffie_hellman.cpp src/crypto/diffie_hellman.h
         src/crypto/base62.cpp src/crypto/base62.h
