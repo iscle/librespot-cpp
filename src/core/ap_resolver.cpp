@@ -7,7 +7,7 @@
 #include <string>
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/document.h>
-#include "network/http.h"
+#include "../network/http.h"
 
 #define BASE_URL "http://apresolve.spotify.com"
 #define DEALERS_URL "?type=dealer"

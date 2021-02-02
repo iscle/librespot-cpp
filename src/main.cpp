@@ -1,5 +1,5 @@
-#include "data/base62.h"
-#include "session.h"
+#include "crypto/base62.h"
+#include "core/session.h"
 
 int main() {
     GOOGLE_PROTOBUF_VERIFY_VERSION;

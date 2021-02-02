@@ -3,9 +3,9 @@
 //
 
 #include "session.h"
-#include "version.h"
+#include "../version.h"
 #include "ap_resolver.h"
-#include "diffie_hellman.h"
+#include "../crypto/diffie_hellman.h"
 #include <vector>
 #include <cstdint>
 #include <iostream>
@@ -172,6 +172,31 @@ std::unique_ptr<Session> Session::create() {
 
 void Session::authenticate(const spotify::LoginCredentials &credentials) {
     authenticate_partial((spotify::LoginCredentials &) credentials, false);
+
+    // TODO: synchronized (auth_lock) {
+    mercury_client = std::make_unique<MercuryClient>();
+    //token_provider = std::make_unique<TokenProvider>();
+    audio_key_manager = std::make_unique<AudioKeyManager>();
+    channel_manager = std::make_unique<ChannelManager>();
+    //api = std::make_unique<ApiClient>();
+    //cdn_manager = std::make_unique<CdnManager>();
+    //content_feeder = std::make_unique<PlayableContentFeeder>();
+    //cache_manager = std::make_unique<CacheManager>();
+    //dealer = std::make_unique<DealerClient>();
+    //search = std::make_unique<SearchManager>();
+    //event_service = std::make_unique<EventService>();
+
+    auth_lock = false;
+    // TODO: auth_lock.notifyAll();
+    // TODO: End synchronized
+
+    //event_service.language("en");
+    //TimeProvider::init();
+    //dealer.connect();
+
+    std::cout << "Authenticated as " << "nobody" << "!" << std::endl;
+    //mercury().interested_in("spotify::user::attributes::update", listener?);
+    //dealer().addMessageListener(listener?, "hm://connect-state/v1/connect/logout");
 }
 
 void session_packet_receiver(Session *session) {
@@ -263,8 +288,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         preferred_locale.write_byte(0x00);
         preferred_locale.write_byte(0x02);
         preferred_locale.write("preferred-locale");
-        preferred_locale.write("en");
-
+        preferred_locale.write("en"); // TODO: Fix this with some sort of config :)
         send_unchecked(Packet::Type::PreferredLocale, preferred_locale);
 
         if (remove_lock) {

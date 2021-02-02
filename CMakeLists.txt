@@ -10,20 +10,25 @@ message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
 add_subdirectory(proto)
 add_executable(librespot_cpp
         src/main.cpp
-        src/session.cpp src/session.h
-        src/ap_resolver.cpp src/ap_resolver.h
+        src/core/session.cpp src/core/session.h
+        src/core/ap_resolver.cpp src/core/ap_resolver.h
         src/network/http.cpp src/network/http.h
         lib/cjson/cJSON.c lib/cjson/cJSON.h
         lib/shannon/ShannonRef.c lib/shannon/Shannon.h
-        src/diffie_hellman.cpp src/diffie_hellman.h
-        src/data/base62.cpp src/data/base62.h
+        src/crypto/diffie_hellman.cpp src/crypto/diffie_hellman.h
+        src/crypto/base62.cpp src/crypto/base62.h
         src/version.cpp src/version.h
         src/crypto/cipher_pair.cpp  src/crypto/cipher_pair.h
         src/crypto/packet.cpp src/crypto/packet.h
         src/utils.cpp src/utils.h
         src/mercury/mercury_client.cpp src/mercury/mercury_client.h
         src/audio/audio_key_manager.cpp src/audio/audio_key_manager.h
-        src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h)
+        src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h
+        src/core/time_provider.cpp src/core/time_provider.h
+        src/core/event_service.cpp src/core/event_service.h
+        src/crypto/pbkdf2.cpp src/crypto/pbkdf2.h
+        src/dealer/dealer_client.cpp src/dealer/dealer_client.h
+        src/mercury/raw_mercury_request.cpp src/mercury/raw_mercury_request.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_cpp PUBLIC lib/)

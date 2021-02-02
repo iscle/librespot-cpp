@@ -9,11 +9,11 @@
 #include <vector>
 #include <proto/authentication.pb.h>
 #include <thread>
-#include "crypto/cipher_pair.h"
-#include "utils.h"
-#include "mercury/mercury_client.h"
-#include "audio/audio_key_manager.h"
-#include "audio/storage/channel_manager.h"
+#include "../crypto/cipher_pair.h"
+#include "../utils.h"
+#include "../mercury/mercury_client.h"
+#include "../audio/audio_key_manager.h"
+#include "../audio/storage/channel_manager.h"
 
 class Session {
 public:
