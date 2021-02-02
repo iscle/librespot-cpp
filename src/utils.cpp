@@ -7,6 +7,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <netdb.h>
+#include <memory>
 
 void utils::ByteArray::write_int(int data) {
     write_byte((data >> 24) & 0xFF);
@@ -24,14 +25,18 @@ void utils::ByteArray::write(const std::string &data) {
         vec.push_back(i);
 }
 
+void utils::ByteArray::write(const std::vector<uint8_t> &data) {
+    for (uint8_t i : data)
+        vec.push_back(i);
+}
+
 void utils::ByteArray::write(const char *data, size_t length) {
     for (size_t i = 0; i < length; i++)
         vec.push_back(data[i]);
 }
 
-size_t utils::ByteArray::array(uint8_t **data) {
-    *data = vec.data();
-    return vec.size();
+std::vector<uint8_t> utils::ByteArray::vector() {
+    return vec;
 }
 
 void utils::ByteArray::write_short(short data) {
@@ -41,7 +46,7 @@ void utils::ByteArray::write_short(short data) {
 
 
 utils::ConnectionHolder::ConnectionHolder(const std::string &addr, const std::string &port) {
-    struct addrinfo hints = {0};
+    struct addrinfo hints = {};
     struct addrinfo *addrs;
     struct addrinfo *i;
     int sockfd;
@@ -78,14 +83,14 @@ utils::ConnectionHolder::ConnectionHolder(const std::string &addr, const std::st
     this->sockfd = sockfd;
 }
 
-utils::ConnectionHolder utils::ConnectionHolder::create(const std::string &addr) {
+std::unique_ptr<utils::ConnectionHolder> utils::ConnectionHolder::create(const std::string &addr) {
     size_t colon = addr.find(':');
     std::string ap_addr = addr.substr(0, colon);
     std::string ap_port = addr.substr(colon + 1);
 
     std::cout << "Connecting to " << addr << std::endl;
 
-    return {ap_addr, ap_port};
+    return std::make_unique<utils::ConnectionHolder>(ap_addr, ap_port);
 }
 
 void utils::ConnectionHolder::write_byte(uint8_t data) const {
@@ -96,7 +101,14 @@ void utils::ConnectionHolder::write_byte(uint8_t data) const {
 }
 
 void utils::ConnectionHolder::write(const std::string &data) const {
-    if (::write(sockfd, data.c_str(), data.size()) != data.size()) {
+    if (::write(sockfd, data.c_str(), data.size()) != (ssize_t) data.size()) {
+        // TODO: Handle error
+        std::cout << "Failed to write data into sockfd!" << std::endl;
+    }
+}
+
+void utils::ConnectionHolder::write(const std::vector<uint8_t> &data) const {
+    if (::write(sockfd, data.data(), data.size()) != (ssize_t) data.size()) {
         // TODO: Handle error
         std::cout << "Failed to write data into sockfd!" << std::endl;
     }
@@ -131,11 +143,12 @@ int utils::ConnectionHolder::read_int() const {
     return data;
 }
 
-void utils::ConnectionHolder::read_fully(uint8_t *data, size_t len) const {
-    int n = 0;
+std::vector<uint8_t> utils::ConnectionHolder::read_fully(size_t len) const {
+    std::vector<uint8_t> data(len);
+    size_t n = 0;
 
     while (n < len) {
-        int count = ::read(this->sockfd, data + n, len - n);
+        ssize_t count = ::read(this->sockfd, &data[n], len - n);
         if (count < 0) {
             // TODO: Handle error
             std::cout << "read_fully() failed!" << std::endl;
@@ -143,6 +156,8 @@ void utils::ConnectionHolder::read_fully(uint8_t *data, size_t len) const {
         }
         n += count;
     }
+
+    return data;
 }
 
 ssize_t utils::ConnectionHolder::write(const uint8_t *data, size_t size) const {
@@ -160,7 +175,7 @@ void utils::ConnectionHolder::restore_timeout() {
 }
 
 void utils::ConnectionHolder::set_timeout(int timeout) {
-    struct timeval new_timeout = {0};
+    struct timeval new_timeout = {};
     new_timeout.tv_sec = timeout;
 
     size_t original_timeout_size = sizeof(original_timeout);

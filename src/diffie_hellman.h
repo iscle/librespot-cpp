@@ -7,6 +7,7 @@
 
 #include <openssl/bn.h>
 #include <string>
+#include <vector>
 
 class DiffieHellman {
 public:
@@ -18,7 +19,7 @@ public:
 
     int get_public_key_length() const;
 
-    int compute_shared_key(const std::string &remote_key, uint8_t **shared_key);
+    std::vector<uint8_t> compute_shared_key(const std::string &remote_key);
 
 private:
     BIGNUM *bn_private_key;

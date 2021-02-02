@@ -34,8 +34,10 @@ static constexpr uint8_t SERVER_KEY[] = {
         0x19, 0xe6, 0x55, 0xbd
 };
 
-Session::Session(const std::string &addr) : conn(utils::ConnectionHolder::create(addr)) {
-
+Session::Session(const std::string &addr) {
+    this->conn = utils::ConnectionHolder::create(addr);
+    this->running = false;
+    this->auth_lock = false;
 }
 
 void Session::connect() {
@@ -58,26 +60,25 @@ void Session::connect() {
 
     auto client_hello_string = client_hello.SerializeAsString();
     int length = 1 + 1 + 4 + (int) client_hello_string.size();
-    conn.write_byte(0);
-    conn.write_byte(4);
-    conn.write_int(length);
-    conn.write(client_hello_string);
+    conn->write_byte(0);
+    conn->write_byte(4);
+    conn->write_int(length);
+    conn->write(client_hello_string);
 
     acc.write_byte(0);
     acc.write_byte(4);
     acc.write_int(length);
     acc.write(client_hello_string);
 
-    length = conn.read_int();
-    auto buffer = std::make_unique<uint8_t[]>(length - 4);
-    conn.read_fully(buffer.get(), length - 4);
+    length = conn->read_int();
+    auto buffer = conn->read_fully(length - 4);
 
     acc.write_int(length);
-    acc.write(reinterpret_cast<const char *>(buffer.get()), length - 4);
+    acc.write(buffer);
 
     // Read APResponseMessage
     spotify::APResponseMessage ap_response_message;
-    ap_response_message.ParseFromArray(buffer.get(), length - 4);
+    ap_response_message.ParseFromArray(buffer.data(), buffer.size());
 
     // Check gs_signature
     RSA *rsa = RSA_new();
@@ -86,8 +87,8 @@ void Session::connect() {
     BN_dec2bn(&e, "65537");
     RSA_set0_key(rsa, n, e, nullptr);
     EVP_PKEY *pub_key = EVP_PKEY_new();
-    EVP_PKEY_assign_RSA(pub_key, rsa);
-    EVP_MD_CTX *rsa_verify_ctx = EVP_MD_CTX_create();
+    EVP_PKEY_set1_RSA(pub_key, rsa);
+    EVP_MD_CTX *rsa_verify_ctx = EVP_MD_CTX_new();
 
     if (EVP_DigestVerifyInit(rsa_verify_ctx, nullptr, EVP_sha1(), nullptr, pub_key) != 1) {
         // TODO: Handle error
@@ -106,31 +107,31 @@ void Session::connect() {
         std::cout << "Failed to verify digest!" << std::endl;
     }
 
+    EVP_MD_CTX_free(rsa_verify_ctx);
+    EVP_PKEY_free(pub_key);
+    RSA_free(rsa);
+
     // Solve challenge
     utils::ByteArray data;
-    uint8_t *shared_key;
-    int shared_key_length = dh.compute_shared_key(
-            ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs(), &shared_key);
+    auto shared_key = dh.compute_shared_key(ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs());
     HMAC_CTX *hmac_ctx = HMAC_CTX_new();
-
-    uint8_t *acc_arr;
-    int acc_arr_length = acc.array(&acc_arr);
+    auto acc_arr = acc.vector();
     unsigned int tmp_len = EVP_MD_size(EVP_sha1());
     auto tmp = std::make_unique<uint8_t[]>(tmp_len);
     for (uint8_t i = 1; i < 6; i++) {
-        HMAC_Init_ex(hmac_ctx, shared_key, shared_key_length, EVP_sha1(), nullptr);
-        HMAC_Update(hmac_ctx, acc_arr, acc_arr_length);
+        HMAC_Init_ex(hmac_ctx, shared_key.data(), shared_key.size(), EVP_sha1(), nullptr);
+        HMAC_Update(hmac_ctx, acc_arr.data(), acc_arr.size());
         HMAC_Update(hmac_ctx, &i, 1);
         HMAC_Final(hmac_ctx, tmp.get(), &tmp_len);
         data.write(reinterpret_cast<const char *>(tmp.get()), tmp_len);
         HMAC_CTX_reset(hmac_ctx);
     }
 
-    uint8_t *data_arr;
-    data.array(&data_arr);
-    HMAC_Init_ex(hmac_ctx, data_arr, 20, EVP_sha1(), nullptr);
-    HMAC_Update(hmac_ctx, acc_arr, acc_arr_length);
+    auto data_arr = data.vector();
+    HMAC_Init_ex(hmac_ctx, data_arr.data(), 20, EVP_sha1(), nullptr);
+    HMAC_Update(hmac_ctx, acc_arr.data(), acc_arr.size());
     HMAC_Final(hmac_ctx, tmp.get(), &tmp_len);
+    HMAC_CTX_free(hmac_ctx);
 
     spotify::ClientResponsePlaintext client_response_plaintext;
     client_response_plaintext.mutable_login_crypto_response()->mutable_diffie_hellman()->set_hmac(tmp.get(), tmp_len);
@@ -139,21 +140,20 @@ void Session::connect() {
 
     auto client_response_plaintext_string = client_response_plaintext.SerializeAsString();
     length = 4 + (int) client_response_plaintext_string.size();
-    conn.write_int(length);
-    conn.write(client_response_plaintext_string);
+    conn->write_int(length);
+    conn->write(client_response_plaintext_string);
 
     uint8_t scrap[4];
-    conn.set_timeout(1);
-    int read = conn.read(scrap, sizeof(scrap));
-    conn.restore_timeout();
+    conn->set_timeout(1);
+    int read = conn->read(scrap, sizeof(scrap));
+    conn->restore_timeout();
     if (read == sizeof(scrap)) {
         // TODO: Handle error
         std::cout << "Login failed!" << std::endl;
         length = (scrap[0] << 24) | (scrap[1] << 16) | (scrap[2] << 8) | (scrap[3] << 0);
-        auto payload = std::make_unique<uint8_t[]>(length - 4);
-        conn.read_fully(payload.get(), length - 4);
+        auto payload = conn->read_fully(length - 4);
         spotify::APResponseMessage ap_error_message;
-        ap_error_message.ParseFromArray(payload.get(), length - 4);
+        ap_error_message.ParseFromArray(payload.data(), payload.size());
         std::cout << ap_error_message.login_failed().error_description() << std::endl;
     } else if (read > 0) {
         // TODO: Handle error
@@ -194,7 +194,7 @@ void session_packet_receiver(Session *session) {
                 break;
             }
             case Packet::Type::CountryCode: {
-                std::string country_code((char *) packet.payload.get(), packet.payload_size);
+                std::string country_code(packet.payload.begin(), packet.payload.end());
                 std::cout << "Received CountryCode: " << country_code << std::endl;
                 break;
             }
@@ -251,7 +251,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     Packet packet = cipher_pair->receive_encoded(conn);
     if (packet.cmd == Packet::Type::APWelcome) {
         std::cout << "Authentication success!" << std::endl;
-        ap_welcome.ParseFromArray(packet.payload.get(), packet.payload_size);
+        ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
         receiver = std::make_unique<std::thread>(session_packet_receiver, this);
 
         uint8_t bytes0x0f[20];
@@ -267,9 +267,8 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         preferred_locale.write("preferred-locale");
         preferred_locale.write("en");
 
-        uint8_t *preferred_locale_bytes;
-        size_t preferred_locale_size = preferred_locale.array(&preferred_locale_bytes);
-        send_unchecked(Packet::Type::PreferredLocale, preferred_locale_bytes, preferred_locale_size);
+        auto preferred_locale_bytes = preferred_locale.vector();
+        send_unchecked(Packet::Type::PreferredLocale, preferred_locale_bytes.data(), preferred_locale_bytes.size());
 
         if (remove_lock) {
             // TODO: Synchronize with auth_lock
@@ -280,8 +279,8 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;
-        login_failed.ParseFromArray(packet.payload.get(), packet.payload_size);
-        std::cout << "SpotifyAuthenticationException: " << login_failed.error_description() << std::endl;
+        login_failed.ParseFromArray(packet.payload.data(), packet.payload.size());
+        std::cout << "SpotifyAuthenticationException: " << login_failed.error_code() << std::endl;
     } else {
         // TODO: Handle error
         std::cout << "Unknown CMD 0x" << std::endl;

@@ -19,7 +19,7 @@ class Session {
 public:
     bool running;
     std::unique_ptr<CipherPair> cipher_pair;
-    utils::ConnectionHolder conn;
+    std::unique_ptr<utils::ConnectionHolder> conn;
 
     explicit Session(const std::string &addr);
     ~Session();

@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <memory>
 
 namespace utils {
     class ByteArray {
@@ -22,14 +23,16 @@ namespace utils {
 
         void write(const char *data, size_t length);
 
-        size_t array(uint8_t **data);
+        std::vector<uint8_t> vector();
 
         void write_short(short data);
+
+        void write(const std::vector<uint8_t> &data);
     };
 
     class ConnectionHolder {
     public:
-        static ConnectionHolder create(const std::string &addr);
+        static std::unique_ptr<ConnectionHolder> create(const std::string &addr);
 
         void write_int(int data) const;
 
@@ -43,18 +46,21 @@ namespace utils {
 
         int read(uint8_t *data, size_t len) const;
 
-        void read_fully(uint8_t *data, size_t len) const;
+        std::vector<uint8_t> read_fully(size_t len) const;
 
         void set_timeout(int timeout);
 
         void restore_timeout();
+
+        ConnectionHolder(const std::string &addr, const std::string &port);
+
+        void write(const std::vector<uint8_t> &data) const;
 
     private:
         int sockfd;
         bool original_timeout_set = false;
         struct timeval original_timeout;
 
-        ConnectionHolder(const std::string &addr, const std::string &port);
     };
 
     std::string generate_device_id();

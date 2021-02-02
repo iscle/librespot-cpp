@@ -5,8 +5,7 @@
 #include <memory>
 #include "packet.h"
 
-Packet::Packet(uint8_t cmd, std::shared_ptr<uint8_t[]> &payload, size_t payload_size) {
+Packet::Packet(uint8_t cmd, std::vector<uint8_t> &payload) {
     this->cmd = cmd;
     this->payload = payload;
-    this->payload_size = payload_size;
 }

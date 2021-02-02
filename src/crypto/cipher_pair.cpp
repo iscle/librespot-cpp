@@ -16,7 +16,7 @@ CipherPair::CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_ke
     recv_nonce = 0;
 }
 
-void CipherPair::send_encoded(utils::ConnectionHolder &conn, uint8_t cmd, uint8_t *payload, size_t payload_size) {
+void CipherPair::send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t cmd, uint8_t *payload, size_t payload_size) {
     // TODO: synchronize with send_cipher_ctx
     int nonce = send_nonce++;
     shn_nonce(&send_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
@@ -26,41 +26,37 @@ void CipherPair::send_encoded(utils::ConnectionHolder &conn, uint8_t cmd, uint8_
     buffer.write_short(payload_size);
     buffer.write((const char *) payload, payload_size);
 
-    uint8_t *bytes;
-    size_t bytes_size = buffer.array(&bytes);
-    shn_encrypt(&send_cipher_ctx, bytes, bytes_size);
+    auto bytes = buffer.vector();
+    shn_encrypt(&send_cipher_ctx, bytes.data(), bytes.size());
 
-    uint8_t mac[4];
-    shn_finish(&send_cipher_ctx, mac, sizeof(mac));
+    auto mac = std::vector<uint8_t>(4);
+    shn_finish(&send_cipher_ctx, mac.data(), mac.size());
 
-    conn.write(bytes, bytes_size);
-    conn.write(mac, sizeof(mac));
+    conn->write(bytes);
+    conn->write(mac);
 }
 
-Packet CipherPair::receive_encoded(utils::ConnectionHolder &conn) {
+Packet CipherPair::receive_encoded(std::unique_ptr<utils::ConnectionHolder> &conn) {
     // TODO: synchronize with send_cipher_ctx
     int nonce = recv_nonce++;
     shn_nonce(&recv_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
 
-    uint8_t header_bytes[3];
-    conn.read_fully(header_bytes, sizeof(header_bytes));
-    shn_decrypt(&recv_cipher_ctx, header_bytes, sizeof(header_bytes));
+    auto header_bytes = conn->read_fully(3);
+    shn_decrypt(&recv_cipher_ctx, header_bytes.data(), header_bytes.size());
 
     uint8_t cmd = header_bytes[0];
     auto payload_size = (short) ((header_bytes[1] << 8) | (header_bytes[2] << 0));
-    auto payload_bytes = std::make_shared<uint8_t[]>(payload_size);
-    conn.read_fully(payload_bytes.get(), payload_size);
-    shn_decrypt(&recv_cipher_ctx, payload_bytes.get(), payload_size);
+    auto payload = conn->read_fully(payload_size);
+    shn_decrypt(&recv_cipher_ctx, payload.data(), payload.size());
 
-    uint8_t mac[4];
-    conn.read_fully(mac, sizeof(mac));
+    auto mac = conn->read_fully(4);
 
-    uint8_t expected_mac[4];
-    shn_finish(&recv_cipher_ctx, expected_mac, sizeof(expected_mac));
-    if (std::memcmp(mac, expected_mac, 4) != 0) {
+    std::vector<uint8_t> expected_mac(4);
+    shn_finish(&recv_cipher_ctx, expected_mac.data(), expected_mac.size());
+    if (mac != expected_mac) {
         // TODO: Handle error!
         std::cout << "MACs don't match!" << std::endl;
     }
 
-    return {cmd, payload_bytes, (size_t) payload_size};
+    return {cmd, payload};
 }

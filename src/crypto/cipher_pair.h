@@ -17,9 +17,9 @@ class CipherPair {
 public:
     CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size);
 
-    void send_encoded(utils::ConnectionHolder &conn, uint8_t cmd, uint8_t *payload, size_t payload_size);
+    void send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t cmd, uint8_t *payload, size_t payload_size);
 
-    Packet receive_encoded(utils::ConnectionHolder &conn);
+    Packet receive_encoded(std::unique_ptr<utils::ConnectionHolder> &conn);
 
 private:
     shn_ctx send_cipher_ctx;

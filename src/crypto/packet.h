@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 class Packet {
 public:
@@ -45,10 +46,9 @@ public:
     };
 
     uint8_t cmd;
-    std::shared_ptr<uint8_t[]> payload;
-    size_t payload_size;
+    std::vector<uint8_t> payload;
 
-    Packet(uint8_t cmd, std::shared_ptr<uint8_t[]> &payload, size_t payload_size);
+    Packet(uint8_t cmd, std::vector<uint8_t> &payload);
 };
 
 

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iostream>
 #include <openssl/rand.h>
+#include <vector>
 
 static constexpr uint8_t P_BYTES[] = {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc9, 0x0f, 0xda, 0xa2, 0x21, 0x68, 0xc2,
@@ -76,7 +77,7 @@ DiffieHellman::~DiffieHellman() {
     OPENSSL_free(public_key);
 }
 
-int DiffieHellman::compute_shared_key(const std::string &remote_key, uint8_t **shared_key) {
+std::vector<uint8_t> DiffieHellman::compute_shared_key(const std::string &remote_key) {
     int ret;
     BN_CTX *ctx = BN_CTX_new();
     BIGNUM *bn_p = BN_bin2bn(P_BYTES, sizeof(P_BYTES), nullptr);
@@ -92,21 +93,14 @@ int DiffieHellman::compute_shared_key(const std::string &remote_key, uint8_t **s
         BN_free(bn_shared_key);
     }
 
-    *shared_key = (uint8_t *) OPENSSL_malloc(BN_num_bytes(bn_shared_key));
-    if (*shared_key == nullptr) {
-        // TODO: Handle error
-        BN_free(bn_shared_key);
-    }
-
-    ret = BN_bn2bin(bn_shared_key, *shared_key);
+    std::vector<uint8_t> shared_key(BN_num_bytes(bn_shared_key));
+    ret = BN_bn2bin(bn_shared_key, shared_key.data());
     BN_free(bn_shared_key);
     if (ret < 0) {
         // TODO: Handle error
-        OPENSSL_free(*shared_key);
-        *shared_key = nullptr;
     }
 
-    return ret;
+    return shared_key;
 }
 
 uint8_t *DiffieHellman::get_public_key() {
