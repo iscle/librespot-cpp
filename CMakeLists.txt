@@ -15,7 +15,6 @@ add_executable(librespot_cpp
         src/network/http.cpp src/network/http.h
         lib/cjson/cJSON.c lib/cjson/cJSON.h
         lib/shannon/ShannonRef.c lib/shannon/Shannon.h
-        src/data/asprintf.c src/data/asprintf.h
         src/diffie_hellman.cpp src/diffie_hellman.h
         src/data/base62.cpp src/data/base62.h
         src/version.cpp src/version.h

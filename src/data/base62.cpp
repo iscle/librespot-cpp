@@ -10,7 +10,7 @@
 
 static const char ALPHABET[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-static std::vector<uint8_t> convert(const std::vector<uint8_t> &data, int from, int to, size_t target_size) {
+std::vector<uint8_t> Base62::convert(const std::vector<uint8_t> &data, int from, int to, size_t target_size) {
     size_t i;
     std::vector<uint8_t> source = data;
     std::vector<uint8_t> out;
@@ -46,7 +46,7 @@ static std::vector<uint8_t> convert(const std::vector<uint8_t> &data, int from, 
     return out;
 }
 
-static std::vector<uint8_t> translate_decode(const std::vector<uint8_t> &data) {
+std::vector<uint8_t> Base62::translate_decode(const std::vector<uint8_t> &data) {
     size_t i;
     size_t j;
     std::vector<uint8_t> translation;
@@ -70,19 +70,19 @@ static std::vector<uint8_t> translate_decode(const std::vector<uint8_t> &data) {
     return translation;
 }
 
-std::vector<uint8_t> base62_decode(const std::vector<uint8_t> &data, size_t target_size) {
+std::vector<uint8_t> Base62::decode(const std::vector<uint8_t> &data, size_t target_size) {
     std::vector<uint8_t> prepared = translate_decode(data);
     return convert(prepared, 62, 256, target_size);
 }
 
-static void translate_encode(std::vector<uint8_t> &data, size_t data_size) {
+void Base62::translate_encode(std::vector<uint8_t> &data, size_t data_size) {
     size_t i;
 
     for (i = 0; i < data_size; i++)
         data[i] = ALPHABET[data[i]];
 }
 
-std::vector<uint8_t> base62_encode(std::vector<uint8_t> &data, size_t target_size) {
+std::vector<uint8_t> Base62::encode(std::vector<uint8_t> &data, size_t target_size) {
     std::vector<uint8_t> indices = convert(data, 256, 62, target_size);
     translate_encode(indices, target_size);
     return indices;
