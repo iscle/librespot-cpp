@@ -17,26 +17,22 @@ void utils::ByteArray::write_int(int data) {
 }
 
 void utils::ByteArray::write_byte(uint8_t data) {
-    vec.push_back(data);
+    push_back(data);
 }
 
 void utils::ByteArray::write(const std::string &data) {
     for (char i : data)
-        vec.push_back(i);
+        push_back(i);
 }
 
 void utils::ByteArray::write(const std::vector<uint8_t> &data) {
     for (uint8_t i : data)
-        vec.push_back(i);
+        push_back(i);
 }
 
 void utils::ByteArray::write(const char *data, size_t length) {
     for (size_t i = 0; i < length; i++)
-        vec.push_back(data[i]);
-}
-
-std::vector<uint8_t> utils::ByteArray::vector() {
-    return vec;
+        push_back(data[i]);
 }
 
 void utils::ByteArray::write_short(short data) {

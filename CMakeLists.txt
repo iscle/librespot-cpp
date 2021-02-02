@@ -28,3 +28,5 @@ add_executable(librespot_cpp
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_cpp PUBLIC lib/)
 target_link_libraries(librespot_cpp proto ${OPENSSL_LIBRARIES} pthread)
+
+#target_compile_options(librespot_cpp PRIVATE -Wall -Wextra -O0 -g)

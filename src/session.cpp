@@ -83,8 +83,7 @@ void Session::connect() {
     // Check gs_signature
     RSA *rsa = RSA_new();
     BIGNUM *n = BN_bin2bn(SERVER_KEY, sizeof(SERVER_KEY), nullptr);
-    BIGNUM *e = nullptr;
-    BN_dec2bn(&e, "65537");
+    BIGNUM *e = nullptr; BN_dec2bn(&e, "65537");
     RSA_set0_key(rsa, n, e, nullptr);
     EVP_PKEY *pub_key = EVP_PKEY_new();
     EVP_PKEY_set1_RSA(pub_key, rsa);
@@ -113,23 +112,22 @@ void Session::connect() {
 
     // Solve challenge
     utils::ByteArray data;
-    auto shared_key = dh.compute_shared_key(ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs());
+    auto shared_key = dh.compute_shared_key(
+            ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs());
     HMAC_CTX *hmac_ctx = HMAC_CTX_new();
-    auto acc_arr = acc.vector();
     unsigned int tmp_len = EVP_MD_size(EVP_sha1());
     auto tmp = std::make_unique<uint8_t[]>(tmp_len);
     for (uint8_t i = 1; i < 6; i++) {
         HMAC_Init_ex(hmac_ctx, shared_key.data(), shared_key.size(), EVP_sha1(), nullptr);
-        HMAC_Update(hmac_ctx, acc_arr.data(), acc_arr.size());
+        HMAC_Update(hmac_ctx, acc.data(), acc.size());
         HMAC_Update(hmac_ctx, &i, 1);
         HMAC_Final(hmac_ctx, tmp.get(), &tmp_len);
         data.write(reinterpret_cast<const char *>(tmp.get()), tmp_len);
         HMAC_CTX_reset(hmac_ctx);
     }
 
-    auto data_arr = data.vector();
-    HMAC_Init_ex(hmac_ctx, data_arr.data(), 20, EVP_sha1(), nullptr);
-    HMAC_Update(hmac_ctx, acc_arr.data(), acc_arr.size());
+    HMAC_Init_ex(hmac_ctx, data.data(), 20, EVP_sha1(), nullptr);
+    HMAC_Update(hmac_ctx, acc.data(), acc.size());
     HMAC_Final(hmac_ctx, tmp.get(), &tmp_len);
     HMAC_CTX_free(hmac_ctx);
 
@@ -161,7 +159,7 @@ void Session::connect() {
     }
 
     // TODO: synchronize auth_lock
-    cipher_pair = std::make_unique<CipherPair>(&data_arr[20], 32, &data_arr[52], 32);
+    cipher_pair = std::make_unique<CipherPair>(&data[20], 32, &data[52], 32);
     auth_lock = true;
     // TODO: end synchronize auth_lock
 
@@ -246,7 +244,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
 
     auto client_response_string = client_response_encrypted.SerializeAsString();
     client_response_encrypted.release_login_credentials(); // We're not the owner of LoginCredentials
-    send_unchecked(Packet::Type::Login, (uint8_t *) client_response_string.c_str(), client_response_string.size());
+    send_unchecked(Packet::Type::Login, client_response_string);
 
     Packet packet = cipher_pair->receive_encoded(conn);
     if (packet.cmd == Packet::Type::APWelcome) {
@@ -254,9 +252,9 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
         receiver = std::make_unique<std::thread>(session_packet_receiver, this);
 
-        uint8_t bytes0x0f[20];
-        RAND_bytes(bytes0x0f, sizeof(bytes0x0f));
-        send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f, sizeof(bytes0x0f));
+        std::vector<uint8_t> bytes0x0f(20);
+        RAND_bytes(bytes0x0f.data(), bytes0x0f.size());
+        send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f);
 
         utils::ByteArray preferred_locale;
         preferred_locale.write_byte(0x00);
@@ -267,8 +265,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         preferred_locale.write("preferred-locale");
         preferred_locale.write("en");
 
-        auto preferred_locale_bytes = preferred_locale.vector();
-        send_unchecked(Packet::Type::PreferredLocale, preferred_locale_bytes.data(), preferred_locale_bytes.size());
+        send_unchecked(Packet::Type::PreferredLocale, preferred_locale);
 
         if (remove_lock) {
             // TODO: Synchronize with auth_lock
@@ -287,8 +284,13 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     }
 }
 
-void Session::send_unchecked(Packet::Type cmd, uint8_t *payload, size_t payload_size) {
-    cipher_pair->send_encoded(conn, cmd, payload, payload_size);
+void Session::send_unchecked(Packet::Type cmd, std::vector<uint8_t> &payload) {
+    cipher_pair->send_encoded(conn, cmd, payload);
+}
+
+void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
+    auto vector = std::vector<uint8_t>(payload.begin(), payload.end());
+    cipher_pair->send_encoded(conn, cmd, vector);
 }
 
 const std::unique_ptr<MercuryClient> &Session::mercury() const {

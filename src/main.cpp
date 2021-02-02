@@ -2,7 +2,7 @@
 #include "session.h"
 
 int main() {
-    //GOOGLE_PROTOBUF_VERIFY_VERSION;
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     std::unique_ptr<Session> session = Session::create();
     session->connect();
@@ -13,6 +13,6 @@ int main() {
     login_credentials.set_auth_data("");
     session->authenticate(login_credentials);
 
-    //google::protobuf::ShutdownProtobufLibrary();
+    google::protobuf::ShutdownProtobufLibrary();
     return 0;
 }

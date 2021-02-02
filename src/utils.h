@@ -11,9 +11,7 @@
 #include <memory>
 
 namespace utils {
-    class ByteArray {
-    private:
-        std::vector<uint8_t> vec;
+    class ByteArray : public std::vector<uint8_t> {
     public:
         void write_int(int data);
 
@@ -22,8 +20,6 @@ namespace utils {
         void write(const std::string &data);
 
         void write(const char *data, size_t length);
-
-        std::vector<uint8_t> vector();
 
         void write_short(short data);
 

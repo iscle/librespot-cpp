@@ -22,6 +22,7 @@ public:
     std::unique_ptr<utils::ConnectionHolder> conn;
 
     explicit Session(const std::string &addr);
+
     ~Session();
 
     static std::unique_ptr<Session> create();
@@ -30,11 +31,11 @@ public:
 
     void authenticate(const spotify::LoginCredentials &);
 
-    const std::unique_ptr<MercuryClient> & mercury() const;
+    const std::unique_ptr<MercuryClient> &mercury() const;
 
-    const std::unique_ptr<AudioKeyManager> & audio_key() const;
+    const std::unique_ptr<AudioKeyManager> &audio_key() const;
 
-    const std::unique_ptr<ChannelManager> & channel() const;
+    const std::unique_ptr<ChannelManager> &channel() const;
 
 private:
     class Configuration {
@@ -50,7 +51,9 @@ private:
 
     void authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock);
 
-    void send_unchecked(Packet::Type cmd, uint8_t *payload, size_t payload_size);
+    void send_unchecked(Packet::Type cmd, std::vector<uint8_t> &payload);
+
+    void send_unchecked(Packet::Type cmd, std::string &payload);
 };
 
 #endif //LIBRESPOT_C_SESSION_H
