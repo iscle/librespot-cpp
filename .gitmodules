@@ -1,4 +1,6 @@
-[submodule "spdlog"]
+[submodule "lib/spdlog"]
 	path = lib/spdlog
 	url = git@github.com:gabime/spdlog.git
-
+[submodule "lib/rapidjson"]
+	path = lib/rapidjson
+	url = git@github.com:Tencent/rapidjson.git
