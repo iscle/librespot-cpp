@@ -108,10 +108,7 @@ std::vector<uint8_t> ConnectionHolder::read_fully(size_t len) const {
 }
 
 ssize_t ConnectionHolder::read(uint8_t *data, size_t len) const {
-    ssize_t ret = ::read(sockfd, data, len);
-    if (ret < 0)
-        throw std::runtime_error("Failed to read data!");
-    return ret;
+    return ::read(sockfd, data, len);
 }
 
 void ConnectionHolder::restore_timeout() {
