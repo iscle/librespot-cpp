@@ -4,3 +4,6 @@
 [submodule "lib/rapidjson"]
 	path = lib/rapidjson
 	url = git@github.com:Tencent/rapidjson.git
+[submodule "lib/cpp-httplib"]
+	path = lib/cpp-httplib
+	url = git@github.com:yhirose/cpp-httplib.git
