@@ -3,3 +3,7 @@
 //
 
 #include "event_service.h"
+
+void EventService::language(std::string lang) {
+
+}

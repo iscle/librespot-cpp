@@ -14,12 +14,15 @@
 #include "../mercury/mercury_client.h"
 #include "../audio/audio_key_manager.h"
 #include "../audio/storage/channel_manager.h"
+#include "../crypto/diffie_hellman.h"
+#include "../dealer/dealer_client.h"
+#include "event_service.h"
 
 class Session {
 public:
     bool running;
-    std::unique_ptr<CipherPair> cipher_pair;
     std::unique_ptr<utils::ConnectionHolder> conn;
+    std::unique_ptr<CipherPair> cipher_pair;
 
     explicit Session(const std::string &addr);
 
@@ -30,6 +33,8 @@ public:
     void connect();
 
     void authenticate(const spotify::LoginCredentials &);
+
+    void send(Packet::Type &cmd, std::vector<uint8_t> &payload);
 
     const std::unique_ptr<MercuryClient> &mercury() const;
 
@@ -42,12 +47,27 @@ private:
 
     };
 
+    DiffieHellman keys;
+    //Inner inner;
+    //ScheduledExecutorService scheduler;
     std::atomic<bool> auth_lock;
-    spotify::APWelcome ap_welcome;
+    std::map<std::string, std::string> user_attributes;
     std::unique_ptr<std::thread> receiver;
+    spotify::APWelcome ap_welcome;
     std::unique_ptr<MercuryClient> mercury_client;
     std::unique_ptr<AudioKeyManager> audio_key_manager;
     std::unique_ptr<ChannelManager> channel_manager;
+    //std::unique_ptr<TokenProvider> token_provider;
+    //std::unique_ptr<CdnManager> cdn_manager;
+    //std::unique_ptr<CacheManager> cache_manager;
+    std::unique_ptr<DealerClient> dealer;
+    //std::unique_ptr<ApiClient> api;
+    //std::unique_ptr<SearchManager> search;
+    //std::unique_ptr<PlayableContentFeeder> content_feeder;
+    std::unique_ptr<EventService> event_service;
+    std::string country_code;
+    volatile bool closed;
+    volatile bool closing;
 
     void authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock);
 

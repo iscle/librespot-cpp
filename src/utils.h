@@ -26,6 +26,25 @@ namespace utils {
         void write(const std::vector<uint8_t> &data);
     };
 
+    class ByteBuffer {
+    public:
+        ByteBuffer(std::vector<uint8_t> &vector);
+
+        uint8_t get();
+
+        short get_short();
+
+        int get_int();
+
+        long get_long();
+
+        std::vector<uint8_t> get(size_t size);
+
+    private:
+        std::vector<uint8_t> &vector;
+        size_t pos;
+    };
+
     class ConnectionHolder {
     public:
         static std::unique_ptr<ConnectionHolder> create(const std::string &addr);

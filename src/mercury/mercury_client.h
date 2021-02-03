@@ -9,58 +9,77 @@
 #include <list>
 #include "../crypto/packet.h"
 #include "raw_mercury_request.h"
+//#include "../core/session.h"
 
-class MercuryClient {
+class MercuryResponse {
 public:
-    class Response {
-    public:
-        std::string uri;
-        std::vector<std::vector<uint8_t>> payload;
-        int status_code;
-    };
+    std::string uri;
+    std::shared_ptr<std::vector<std::vector<uint8_t>>> payload;
+    int status_code;
 
-    class SubListener {
-    public:
-        virtual void event(MercuryClient::Response &resp) {
-            throw std::runtime_error("Stub!");
-        };
-    };
+    MercuryResponse(spotify::Header &header, std::shared_ptr<std::vector<std::vector<uint8_t>>> payload);
+};
 
+class SubListener { ;
+public:
+    virtual void event(MercuryResponse &response) {
+        throw std::runtime_error("Stub!");
+    }
+};
+
+class MercuryClient : public SubListener {
+public:
     class InternalSubListener {
     public:
-        InternalSubListener(const std::string &uri, SubListener listener, bool is_sub);
+        SubListener *listener;
 
-        bool matches(std::string &uri);
+        InternalSubListener(std::string uri, SubListener *listener, bool is_sub);
+
+        bool matches(const std::string &uri);
+
+        void dispatch(MercuryResponse &resp) const;
 
     private:
         std::string uri;
-        SubListener listener;
         bool is_sub;
     };
 
     class Callback {
-        virtual void response(Response &response) {
+        virtual void response(MercuryResponse &response) {
             throw std::runtime_error("Stub!");
         };
     };
 
     class SyncCallback : public Callback {
-        void response(Response &response) override;
+        void response(MercuryResponse &response) override;
 
     public:
-        Response waitResponse();
+        MercuryResponse waitResponse();
     };
 
-    void subscribe(std::string &uri, SubListener &listener);
+    void subscribe(std::string &uri, SubListener *listener);
+
     void unsubscribe(std::string &uri);
-    Response send_sync(RawMercuryRequest &request);
-    int send(RawMercuryRequest &request, Callback &callback);
+
+    MercuryResponse send_sync(RawMercuryRequest &request);
+
+    int send(RawMercuryRequest &request, Callback *callback);
+
     void dispatch(Packet &packet);
-    void interested_in(std::string &uri, SubListener &listener);
-    void not_interested(SubListener &listener);
+
+    void interested_in(std::string &uri, SubListener *listener);
+
+    void not_interested(SubListener *listener);
 
 private:
+    static constexpr int MERCURY_REQUEST_TIMEOUT = 3000;
+    std::atomic<int> seq_holder;
+    std::map<long, Callback *> callbacks;
     std::list<InternalSubListener> subscriptions;
+    std::map<long, std::shared_ptr<std::vector<std::vector<uint8_t>>>> partials;
+    //Session *session;
+
+    void event(MercuryResponse &resp);
 };
 
 

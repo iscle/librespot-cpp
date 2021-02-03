@@ -6,7 +6,13 @@
 #define LIBRESPOT_CPP_DEALER_CLIENT_H
 
 
+class Session;
+
 class DealerClient {
+public:
+    DealerClient(Session *session);
+
+private:
 
 };
 

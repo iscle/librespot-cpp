@@ -3,19 +3,27 @@
 //
 
 #include <iostream>
+#include <utility>
 #include <proto/pubsub.pb.h>
+#include <proto/mercury.pb.h>
 #include "mercury_client.h"
+#include "../utils.h"
 
-void MercuryClient::subscribe(std::string &uri, SubListener &listener) {
+static std::map<std::string, Packet::Type> METHOD_TYPE = {
+        {"SUB", Packet::Type::MercurySub},
+        {"UNSUB", Packet::Type::MercuryUnsub},
+};
+
+void MercuryClient::subscribe(std::string &uri, SubListener *listener) {
     RawMercuryRequest request = RawMercuryRequest::sub(uri);
-    Response response = send_sync(request);
+    MercuryResponse response = send_sync(request);
     if (response.status_code != 200) {
         // TODO: Handle error
         std::cout << "status_code != 200!" << std::endl;
     }
 
-    if (!response.payload.empty()) {
-        for (std::vector<uint8_t> &payload : response.payload) {
+    if (!response.payload->empty()) {
+        for (std::vector<uint8_t> &payload : *response.payload) {
             spotify::Subscription sub;
             sub.ParseFromArray(payload.data(), payload.size());
             subscriptions.emplace_back(sub.uri(), listener, true);
@@ -29,11 +37,8 @@ void MercuryClient::subscribe(std::string &uri, SubListener &listener) {
 
 void MercuryClient::unsubscribe(std::string &uri) {
     RawMercuryRequest request = RawMercuryRequest::unsub(uri);
-    Response response = send_sync(request);
-    if (response.status_code != 200) {
-        // TODO: Handle error
-        std::cout << "status_code != 200!" << std::endl;
-    }
+    MercuryResponse response = send_sync(request);
+    if (response.status_code != 200) throw std::runtime_error("Status code != 200!");
 
     subscriptions.remove_if([&uri](InternalSubListener &l) {
         return l.matches(uri);
@@ -42,43 +47,183 @@ void MercuryClient::unsubscribe(std::string &uri) {
     std::cout << "Unsubscribed successfully from " << uri << "!" << std::endl;
 }
 
-MercuryClient::Response MercuryClient::send_sync(RawMercuryRequest &request) {
+MercuryResponse MercuryClient::send_sync(RawMercuryRequest &request) {
     SyncCallback callback;
-    int seq = send(request, callback);
+    int seq = send(request, &callback);
 
     // TODO: Try catch
     return callback.waitResponse();
 }
 
-int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback &callback) {
-    return 0;
+/*
+    @NotNull
+    public <W extends JsonWrapper> W sendSync(@NotNull JsonMercuryRequest<W> request) throws IOException, MercuryException {
+        Response resp = sendSync(request.request);
+        if (resp.statusCode >= 200 && resp.statusCode < 300) return request.instantiate(resp);
+        else throw new MercuryException(resp);
+    }
+
+    @NotNull
+    public <P extends Message> ProtoWrapperResponse<P> sendSync(@NotNull ProtobufMercuryRequest<P> request) throws IOException, MercuryException {
+        Response resp = sendSync(request.request);
+        if (resp.statusCode >= 200 && resp.statusCode < 300)
+            return new ProtoWrapperResponse<>(request.parser.parseFrom(resp.payload.stream()));
+        else
+            throw new MercuryException(resp);
+    }
+
+    public <W extends JsonWrapper> void send(@NotNull JsonMercuryRequest<W> request, @NotNull JsonCallback<W> callback) {
+        try {
+            send(request.request, resp -> {
+                if (resp.statusCode >= 200 && resp.statusCode < 300) callback.response(request.instantiate(resp));
+                else callback.exception(new MercuryException(resp));
+            });
+        } catch (IOException ex) {
+            callback.exception(ex);
+        }
+    }
+
+    public <P extends Message> void send(@NotNull ProtobufMercuryRequest<P> request, @NotNull ProtoCallback<P> callback) {
+        try {
+            send(request.request, resp -> {
+                if (resp.statusCode >= 200 && resp.statusCode < 300) {
+                    try {
+                        callback.response(new ProtoWrapperResponse<>(request.parser.parseFrom(resp.payload.stream())));
+                    } catch (InvalidProtocolBufferException ex) {
+                        callback.exception(ex);
+                    }
+                } else {
+                    callback.exception(new MercuryException(resp));
+                }
+            });
+        } catch (IOException ex) {
+            callback.exception(ex);
+        }
+    }
+ */
+
+int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *callback) {
+    utils::ByteArray out;
+
+    int seq;
+    // TODO: synchronized (seqHolder) {
+    seq = seq_holder;
+    seq_holder++;
+    // TODO: }
+
+    std::cout << "Send Mercury request, seq: {}, uri: {}, method: {}" << std::endl;
+
+    out.write_short(4); // Sequence size
+    out.write_int(seq); // Sequence id
+    out.write_byte(1); // Flags
+    out.write_short(1 + request.payload.size()); // Parts count
+
+    auto header = request.header.SerializeAsString();
+    out.write_short(header.size()); // Header size
+    out.write(header); // Header
+
+    for (const auto &part : request.payload) { // Parts
+        out.write_short(part.size());
+        out.write(part);
+    }
+
+    Packet::Type cmd = (METHOD_TYPE.find(request.header.method()) == METHOD_TYPE.end()) ? Packet::Type::MercuryReq : METHOD_TYPE[request.header.method()];
+    //session->send(cmd, out);
+
+    callbacks.insert(std::make_pair(seq, callback));
+    return seq;
 }
 
 void MercuryClient::dispatch(Packet &packet) {
+    utils::ByteBuffer payload(packet.payload);
+
+    int seq_length = payload.get_short();
+    long seq;
+    if (seq_length == 2) seq = payload.get_short();
+    else if (seq_length == 4) seq = payload.get_int();
+    else if (seq_length == 8) seq = payload.get_long();
+    else throw std::runtime_error("Unknown seq length: " + std::to_string(seq_length));
+
+    uint8_t flags = payload.get();
+    short parts = payload.get_short();
+
+    std::shared_ptr<std::vector<std::vector<uint8_t>>> partial;
+    if (partials.find(seq) == partials.end() || flags == 0) {
+        partial = std::make_shared<std::vector<std::vector<uint8_t>>>();
+        partials.insert(std::make_pair(seq, partial));
+    } else {
+        partial = partials[seq];
+    }
+
+    std::cout << "Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}" << std::endl;
+
+    for (int i = 0; i < parts; i++) {
+        short size = payload.get_short();
+        auto buffer = payload.get(size);
+        partial->emplace_back(buffer);
+    }
+
+    if (flags != 1) return;
+
+    partials.erase(seq);
+
+    spotify::Header header;
+    header.ParseFromArray(partial->front().data(), partial->front().size());
+    MercuryResponse resp(header, std::move(partial));
+    if (packet.cmd == Packet::Type::MercuryEvent) {
+        bool dispatched = false;
+        //synchronized (subscriptions) {
+        for (InternalSubListener &sub : subscriptions) {
+            if (sub.matches(resp.uri)) {
+                sub.dispatch(resp);
+                dispatched = true;
+            }
+        }
+        //}
+    } else if (packet.cmd == Packet::Type::MercuryReq || packet.cmd == Packet::Type::MercurySub ||
+               packet.cmd == Packet::Type::MercuryUnsub) {
+
+    } else {
+        std::cout << "Couldn't handle packet, seq: {}, uri: {}, code: {}" << std::endl;
+    }
+}
+
+void MercuryClient::interested_in(std::string &uri, SubListener *listener) {
+    subscriptions.emplace_back(uri, listener, false);
+}
+
+void MercuryClient::not_interested(SubListener *listener) {
+    subscriptions.remove_if([&listener](InternalSubListener &l) {
+        return l.listener == listener;
+    });
+}
+
+void MercuryClient::event(MercuryResponse &resp) {
 
 }
 
-void MercuryClient::interested_in(std::string &uri, SubListener &listener) {
+MercuryClient::InternalSubListener::InternalSubListener(std::string uri, SubListener *listener, bool is_sub) :
+        uri(std::move(uri)), listener(listener), is_sub(is_sub) {
 
 }
 
-void MercuryClient::not_interested(SubListener &listener) {
-
-}
-
-MercuryClient::InternalSubListener::InternalSubListener(const std::string &uri, MercuryClient::SubListener listener,
-                                                        bool is_sub) {
-
-}
-
-bool MercuryClient::InternalSubListener::matches(std::string &uri) {
+bool MercuryClient::InternalSubListener::matches(const std::string &uri) {
     return this->uri.rfind(uri, 0) == 0;
 }
 
-void MercuryClient::SyncCallback::response(Response &response) {
+void MercuryClient::InternalSubListener::dispatch(MercuryResponse &resp) const {
+    listener->event(resp);
+}
+
+void MercuryClient::SyncCallback::response(MercuryResponse &response) {
 
 }
 
-MercuryClient::Response MercuryClient::SyncCallback::waitResponse() {
-    return MercuryClient::Response();
+MercuryResponse MercuryClient::SyncCallback::waitResponse() {
+    throw std::runtime_error("Unimplemented!");
+}
+
+MercuryResponse::MercuryResponse(spotify::Header &header, std::shared_ptr<std::vector<std::vector<uint8_t>>> payload) :
+        uri(header.uri()), status_code(header.status_code()), payload(std::move(payload)) {
+    payload->erase(payload->begin()); // Remove first element
 }

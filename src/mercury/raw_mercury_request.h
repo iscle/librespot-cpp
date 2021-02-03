@@ -7,10 +7,13 @@
 
 
 #include <string>
+#include <proto/mercury.pb.h>
 
 class RawMercuryRequest {
-
 public:
+    spotify::Header header;
+    std::vector<std::vector<uint8_t>> payload;
+
     static RawMercuryRequest sub(std::string &uri);
 
     static RawMercuryRequest unsub(std::string &uri);

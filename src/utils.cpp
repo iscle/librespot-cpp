@@ -185,3 +185,52 @@ void utils::ConnectionHolder::set_timeout(int timeout) {
 std::string utils::generate_device_id() {
     return "209031ee9cc724ce46a6c4bf9140c70c4a9202c8";
 }
+
+utils::ByteBuffer::ByteBuffer(std::vector<uint8_t> &vector) :
+        vector(vector), pos(0) {
+
+}
+
+uint8_t utils::ByteBuffer::get() {
+    uint8_t data = 0;
+    data |= ((uint8_t) vector[pos++]) << 0;
+    return data;
+}
+
+short utils::ByteBuffer::get_short() {
+    short data = 0;
+    data |= ((short) vector[pos++]) << 8;
+    data |= ((short) vector[pos++]) << 0;
+    return data;
+}
+
+int utils::ByteBuffer::get_int() {
+    int data = 0;
+    data |= ((int) vector[pos++]) << 24;
+    data |= ((int) vector[pos++]) << 16;
+    data |= ((int) vector[pos++]) << 8;
+    data |= ((int) vector[pos++]) << 0;
+    return data;
+}
+
+long utils::ByteBuffer::get_long() {
+    long data = 0;
+    data |= ((long) vector[pos++]) << 56;
+    data |= ((long) vector[pos++]) << 48;
+    data |= ((long) vector[pos++]) << 40;
+    data |= ((long) vector[pos++]) << 32;
+    data |= ((long) vector[pos++]) << 24;
+    data |= ((long) vector[pos++]) << 16;
+    data |= ((long) vector[pos++]) << 8;
+    data |= ((long) vector[pos++]) << 0;
+    return data;
+}
+
+std::vector<uint8_t> utils::ByteBuffer::get(size_t size) {
+    std::vector<uint8_t> data(size);
+
+    for (size_t i = 0; i < size; i++)
+        data[i] = vector[pos++];
+
+    return std::move(data);
+}

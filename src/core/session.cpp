@@ -34,10 +34,11 @@ static constexpr uint8_t SERVER_KEY[] = {
         0x19, 0xe6, 0x55, 0xbd
 };
 
-Session::Session(const std::string &addr) {
-    this->conn = utils::ConnectionHolder::create(addr);
+Session::Session(const std::string &addr) : conn(utils::ConnectionHolder::create(addr)) {
     this->running = false;
     this->auth_lock = false;
+
+    std::cout << "Created new session! {deviceId: {}, ap: {}, proxy: {}} " << std::endl;
 }
 
 void Session::connect() {
@@ -83,7 +84,8 @@ void Session::connect() {
     // Check gs_signature
     RSA *rsa = RSA_new();
     BIGNUM *n = BN_bin2bn(SERVER_KEY, sizeof(SERVER_KEY), nullptr);
-    BIGNUM *e = nullptr; BN_dec2bn(&e, "65537");
+    BIGNUM *e = nullptr;
+    BN_dec2bn(&e, "65537");
     RSA_set0_key(rsa, n, e, nullptr);
     EVP_PKEY *pub_key = EVP_PKEY_new();
     EVP_PKEY_set1_RSA(pub_key, rsa);
@@ -166,10 +168,6 @@ void Session::connect() {
     std::cout << "Connected successfully!" << std::endl;
 }
 
-std::unique_ptr<Session> Session::create() {
-    return std::make_unique<Session>(ApResolver::get_instance().get_accesspoint());
-}
-
 void Session::authenticate(const spotify::LoginCredentials &credentials) {
     authenticate_partial((spotify::LoginCredentials &) credentials, false);
 
@@ -182,15 +180,15 @@ void Session::authenticate(const spotify::LoginCredentials &credentials) {
     //cdn_manager = std::make_unique<CdnManager>();
     //content_feeder = std::make_unique<PlayableContentFeeder>();
     //cache_manager = std::make_unique<CacheManager>();
-    //dealer = std::make_unique<DealerClient>();
+    dealer = std::make_unique<DealerClient>(this);
     //search = std::make_unique<SearchManager>();
-    //event_service = std::make_unique<EventService>();
+    event_service = std::make_unique<EventService>();
 
     auth_lock = false;
     // TODO: auth_lock.notifyAll();
     // TODO: End synchronized
 
-    //event_service.language("en");
+    event_service->language("en");
     //TimeProvider::init();
     //dealer.connect();
 
@@ -317,6 +315,23 @@ void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
     cipher_pair->send_encoded(conn, cmd, vector);
 }
 
+void Session::send(Packet::Type &cmd, std::vector<uint8_t> &payload) {
+    if (/*closing || */conn == nullptr) {
+        std::cout << "Connection was broken while closing." << std::endl;
+        return;
+    }
+
+    //if (closed) throw std::runtime_error("Session is closed!");
+
+    //synchronized (auth_lock) {
+    if (cipher_pair == nullptr || auth_lock) {
+        //auth_lock.wait();
+    }
+
+    send_unchecked(cmd, payload);
+    //}
+}
+
 const std::unique_ptr<MercuryClient> &Session::mercury() const {
     // waitAuthLock();
     if (mercury_client == nullptr) {
@@ -347,4 +362,9 @@ const std::unique_ptr<ChannelManager> &Session::channel() const {
 Session::~Session() {
     running = false;
     if (receiver != nullptr) receiver->join();
+}
+
+
+std::unique_ptr<Session> Session::create() {
+    return std::make_unique<Session>(ApResolver::get_instance().get_accesspoint());
 }

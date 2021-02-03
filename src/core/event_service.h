@@ -6,7 +6,13 @@
 #define LIBRESPOT_CPP_EVENT_SERVICE_H
 
 
+#include <string>
+
 class EventService {
+public:
+    void language(std::string lang);
+
+private:
 
 };
 

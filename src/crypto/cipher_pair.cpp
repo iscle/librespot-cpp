@@ -15,7 +15,8 @@ CipherPair::CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_ke
     recv_nonce = 0;
 }
 
-void CipherPair::send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t cmd, std::vector<uint8_t> &payload) {
+void
+CipherPair::send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t cmd, std::vector<uint8_t> &payload) {
     // TODO: synchronize with send_cipher_ctx
     int nonce = send_nonce++;
     shn_nonce(&send_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));

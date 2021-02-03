@@ -3,3 +3,7 @@
 //
 
 #include "dealer_client.h"
+
+DealerClient::DealerClient(Session *session) {
+
+}
