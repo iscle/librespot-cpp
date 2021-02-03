@@ -44,27 +44,24 @@ DiffieHellman::DiffieHellman() {
     BN_free(bn_g);
     BN_CTX_free(ctx);
     if (ret != 1) {
-        // TODO: Handle error
-        std::cout << "Error while calculating public key!" << std::endl;
         BN_free(bn_private_key);
         BN_free(bn_public_key);
+        throw std::runtime_error("Error while calculating public key!");
     }
 
     auto *public_key = (uint8_t *) OPENSSL_malloc(BN_num_bytes(bn_public_key));
     if (public_key == nullptr) {
-        // TODO: Handle error
-        std::cout << "Could not allocate memory for public key!" << std::endl;
         BN_free(bn_private_key);
         BN_free(bn_public_key);
+        throw std::runtime_error("Could not allocate memory for public key!");
     }
 
     int public_key_length = BN_bn2bin(bn_public_key, public_key);
     BN_free(bn_public_key);
     if (public_key_length < 0) {
-        // TODO: Handle error
-        std::cout << "Failed to copy server secret!" << std::endl;
         OPENSSL_free(public_key);
         BN_free(bn_private_key);
+        throw std::runtime_error("Failed to copy server secret!");
     }
 
     this->bn_private_key = bn_private_key;
@@ -89,16 +86,14 @@ std::vector<uint8_t> DiffieHellman::compute_shared_key(const std::string &remote
     BN_free(bn_p);
     BN_CTX_free(ctx);
     if (ret != 1) {
-        // TODO: Handle error
         BN_free(bn_shared_key);
+        throw std::runtime_error("Failed to calculate shared key!");
     }
 
     std::vector<uint8_t> shared_key(BN_num_bytes(bn_shared_key));
     ret = BN_bn2bin(bn_shared_key, shared_key.data());
     BN_free(bn_shared_key);
-    if (ret < 0) {
-        // TODO: Handle error
-    }
+    if (ret < 0) throw std::runtime_error("Failed to convert BIGNUM to binary!");
 
     return shared_key;
 }

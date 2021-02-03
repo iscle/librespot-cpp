@@ -15,6 +15,7 @@
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <spdlog/spdlog.h>
 
 static constexpr uint8_t SERVER_KEY[] = {
         0xac, 0xe0, 0x46, 0x0b, 0xff, 0xc2, 0x30, 0xaf, 0xf4, 0x6b, 0xfe, 0xc3, 0xbf, 0xbf, 0x86, 0x3d, 0xa1, 0x91,
@@ -34,11 +35,11 @@ static constexpr uint8_t SERVER_KEY[] = {
         0x19, 0xe6, 0x55, 0xbd
 };
 
-Session::Session(const std::string &addr) : conn(utils::ConnectionHolder::create(addr)) {
+Session::Session(const std::string &addr) : conn(std::make_unique<ConnectionHolder>(addr)) {
     this->running = false;
     this->auth_lock = false;
 
-    std::cout << "Created new session! {deviceId: {}, ap: {}, proxy: {}} " << std::endl;
+    spdlog::info("Created new session! {{deviceId: {}, ap: {}, proxy: {}}}", "nullptr", addr, false);
 }
 
 void Session::connect() {
@@ -93,19 +94,19 @@ void Session::connect() {
 
     if (EVP_DigestVerifyInit(rsa_verify_ctx, nullptr, EVP_sha1(), nullptr, pub_key) != 1) {
         // TODO: Handle error
-        std::cout << "Failed to init digest verify!" << std::endl;
+        spdlog::error("Failed to init digest verify!");
     }
 
     auto gs = ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs();
     if (EVP_DigestVerifyUpdate(rsa_verify_ctx, gs.c_str(), gs.size()) != 1) {
         // TODO: Handle error
-        std::cout << "Failed to update digest verify!" << std::endl;
+        spdlog::error("Failed to update digest verify!");
     }
 
     auto gs_signature = ap_response_message.challenge().login_crypto_challenge().diffie_hellman().gs_signature();
     if (EVP_DigestVerifyFinal(rsa_verify_ctx, (const unsigned char *) gs_signature.c_str(), gs_signature.size()) != 1) {
         // TODO: Handle error
-        std::cout << "Failed to verify digest!" << std::endl;
+        spdlog::error("Failed to verify digest!");
     }
 
     EVP_MD_CTX_free(rsa_verify_ctx);
@@ -149,15 +150,14 @@ void Session::connect() {
     conn->restore_timeout();
     if (read == sizeof(scrap)) {
         // TODO: Handle error
-        std::cout << "Login failed!" << std::endl;
         length = (scrap[0] << 24) | (scrap[1] << 16) | (scrap[2] << 8) | (scrap[3] << 0);
         auto payload = conn->read_fully(length - 4);
         spotify::APResponseMessage ap_error_message;
         ap_error_message.ParseFromArray(payload.data(), payload.size());
-        std::cout << ap_error_message.login_failed().error_description() << std::endl;
+        spdlog::error("Login failed: {}!", ap_error_message.login_failed().error_code());
     } else if (read > 0) {
         // TODO: Handle error
-        std::cout << "Got unknown data!" << std::endl;
+        spdlog::error("Read unknown data!");
     }
 
     // TODO: synchronize auth_lock
@@ -165,7 +165,7 @@ void Session::connect() {
     auth_lock = true;
     // TODO: end synchronize auth_lock
 
-    std::cout << "Connected successfully!" << std::endl;
+    spdlog::info("Connected successfully!");
 }
 
 void Session::authenticate(const spotify::LoginCredentials &credentials) {
@@ -192,7 +192,7 @@ void Session::authenticate(const spotify::LoginCredentials &credentials) {
     //TimeProvider::init();
     //dealer.connect();
 
-    std::cout << "Authenticated as " << "nobody" << "!" << std::endl;
+    spdlog::info("Authenticated as {}!", ap_welcome.canonical_username());
     //mercury().interested_in("spotify::user::attributes::update", listener?);
     //dealer().addMessageListener(listener?, "hm://connect-state/v1/connect/logout");
 }
@@ -257,7 +257,7 @@ void session_packet_receiver(Session *session) {
 void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock) {
     if (cipher_pair == nullptr) {
         // TODO: Handle error
-        std::cout << "Connection not established!" << std::endl;
+        spdlog::error("Connection not established!");
     }
 
     spotify::ClientResponseEncrypted client_response_encrypted;
@@ -271,7 +271,6 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
 
     Packet packet = cipher_pair->receive_encoded(conn);
     if (packet.cmd == Packet::Type::APWelcome) {
-        std::cout << "Authentication success!" << std::endl;
         ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
         receiver = std::make_unique<std::thread>(session_packet_receiver, this);
 
@@ -317,7 +316,7 @@ void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
 
 void Session::send(Packet::Type &cmd, std::vector<uint8_t> &payload) {
     if (/*closing || */conn == nullptr) {
-        std::cout << "Connection was broken while closing." << std::endl;
+        spdlog::debug("Connection was broken while closing.");
         return;
     }
 
@@ -336,7 +335,7 @@ const std::unique_ptr<MercuryClient> &Session::mercury() const {
     // waitAuthLock();
     if (mercury_client == nullptr) {
         // TODO: Handle error
-        std::cout << "Session isn't authenticated" << std::endl;
+        spdlog::error("Session isn't authenticated");
     }
     return mercury_client;
 }
@@ -345,7 +344,7 @@ const std::unique_ptr<AudioKeyManager> &Session::audio_key() const {
     // waitAuthLock();
     if (audio_key_manager == nullptr) {
         // TODO: Handle error
-        std::cout << "Session isn't authenticated" << std::endl;
+        spdlog::error("Session isn't authenticated");
     }
     return audio_key_manager;
 }
@@ -354,7 +353,7 @@ const std::unique_ptr<ChannelManager> &Session::channel() const {
     // waitAuthLock();
     if (channel_manager == nullptr) {
         // TODO: Handle error
-        std::cout << "Session isn't authenticated" << std::endl;
+        spdlog::error("Session isn't authenticated");
     }
     return channel_manager;
 }

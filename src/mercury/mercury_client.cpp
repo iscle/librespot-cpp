@@ -6,21 +6,19 @@
 #include <utility>
 #include <proto/pubsub.pb.h>
 #include <proto/mercury.pb.h>
+#include <spdlog/spdlog.h>
 #include "mercury_client.h"
 #include "../utils.h"
 
 static std::map<std::string, Packet::Type> METHOD_TYPE = {
-        {"SUB", Packet::Type::MercurySub},
+        {"SUB",   Packet::Type::MercurySub},
         {"UNSUB", Packet::Type::MercuryUnsub},
 };
 
 void MercuryClient::subscribe(std::string &uri, SubListener *listener) {
     RawMercuryRequest request = RawMercuryRequest::sub(uri);
     MercuryResponse response = send_sync(request);
-    if (response.status_code != 200) {
-        // TODO: Handle error
-        std::cout << "status_code != 200!" << std::endl;
-    }
+    if (response.status_code != 200) throw std::runtime_error("Status code != 200");
 
     if (!response.payload->empty()) {
         for (std::vector<uint8_t> &payload : *response.payload) {
@@ -32,7 +30,7 @@ void MercuryClient::subscribe(std::string &uri, SubListener *listener) {
         subscriptions.emplace_back(uri, listener, true);
     }
 
-    std::cout << "Subscribed successfully to " << uri << "!" << std::endl;
+    spdlog::trace("Subscribed successfully to {}!", uri);
 }
 
 void MercuryClient::unsubscribe(std::string &uri) {
@@ -44,7 +42,7 @@ void MercuryClient::unsubscribe(std::string &uri) {
         return l.matches(uri);
     });
 
-    std::cout << "Unsubscribed successfully from " << uri << "!" << std::endl;
+    spdlog::trace("Unsubscribed successfully from {}!", uri);
 }
 
 MercuryResponse MercuryClient::send_sync(RawMercuryRequest &request) {
@@ -111,7 +109,7 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
     seq_holder++;
     // TODO: }
 
-    std::cout << "Send Mercury request, seq: {}, uri: {}, method: {}" << std::endl;
+    spdlog::trace("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(), request.header.method());
 
     out.write_short(4); // Sequence size
     out.write_int(seq); // Sequence id
@@ -127,7 +125,8 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
         out.write(part);
     }
 
-    Packet::Type cmd = (METHOD_TYPE.find(request.header.method()) == METHOD_TYPE.end()) ? Packet::Type::MercuryReq : METHOD_TYPE[request.header.method()];
+    Packet::Type cmd = (METHOD_TYPE.find(request.header.method()) == METHOD_TYPE.end()) ? Packet::Type::MercuryReq
+                                                                                        : METHOD_TYPE[request.header.method()];
     //session->send(cmd, out);
 
     callbacks.insert(std::make_pair(seq, callback));
@@ -155,7 +154,7 @@ void MercuryClient::dispatch(Packet &packet) {
         partial = partials[seq];
     }
 
-    std::cout << "Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}" << std::endl;
+    spdlog::trace("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
 
     for (int i = 0; i < parts; i++) {
         short size = payload.get_short();
@@ -180,11 +179,14 @@ void MercuryClient::dispatch(Packet &packet) {
             }
         }
         //}
+
+        if (!dispatched)
+            spdlog::debug("Couldn't dispatch Mercury event {{seq: {}, uri: {}, code: {}}}", seq, header.uri(), header.status_code());
     } else if (packet.cmd == Packet::Type::MercuryReq || packet.cmd == Packet::Type::MercurySub ||
                packet.cmd == Packet::Type::MercuryUnsub) {
 
     } else {
-        std::cout << "Couldn't handle packet, seq: {}, uri: {}, code: {}" << std::endl;
+        spdlog::warn("Couldn't handle packet, seq: {}, uri: {}, code: {}", seq, header.uri(), header.status_code());
     }
 }
 

@@ -7,6 +7,8 @@ pkg_search_module(OPENSSL REQUIRED openssl)
 include_directories(${OPENSSL_INCLUDE_DIRS})
 message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
 
+add_subdirectory(lib/spdlog)
+
 add_subdirectory(proto)
 add_executable(librespot_cpp
         src/main.cpp
@@ -27,10 +29,12 @@ add_executable(librespot_cpp
         src/core/event_service.cpp src/core/event_service.h
         src/crypto/pbkdf2.cpp src/crypto/pbkdf2.h
         src/dealer/dealer_client.cpp src/dealer/dealer_client.h
-        src/mercury/raw_mercury_request.cpp src/mercury/raw_mercury_request.h)
+        src/mercury/raw_mercury_request.cpp src/mercury/raw_mercury_request.h
+        src/librespot_cpp.cpp src/librespot_cpp.h
+        src/connection_holder.cpp src/connection_holder.h src/proxy_settings.cpp src/proxy_settings.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
 target_include_directories(librespot_cpp PUBLIC lib/)
-target_link_libraries(librespot_cpp proto ${OPENSSL_LIBRARIES} pthread)
+target_link_libraries(librespot_cpp proto ${OPENSSL_LIBRARIES} pthread spdlog::spdlog)
 
 #target_compile_options(librespot_cpp PRIVATE -Wall -Wextra -O0 -g)

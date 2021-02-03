@@ -7,16 +7,14 @@
 #include <memory>
 #include "cipher_pair.h"
 
-CipherPair::CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size) {
+CipherPair::CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size) :
+        send_cipher_ctx({}), send_nonce(0), recv_cipher_ctx({}), recv_nonce(0) {
     shn_key(&send_cipher_ctx, send_key, send_key_size);
-    send_nonce = 0;
-
     shn_key(&recv_cipher_ctx, recv_key, recv_key_size);
-    recv_nonce = 0;
 }
 
 void
-CipherPair::send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t cmd, std::vector<uint8_t> &payload) {
+CipherPair::send_encoded(std::unique_ptr<ConnectionHolder> &conn, uint8_t cmd, std::vector<uint8_t> &payload) {
     // TODO: synchronize with send_cipher_ctx
     int nonce = send_nonce++;
     shn_nonce(&send_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
@@ -35,7 +33,7 @@ CipherPair::send_encoded(std::unique_ptr<utils::ConnectionHolder> &conn, uint8_t
     conn->write(mac);
 }
 
-Packet CipherPair::receive_encoded(std::unique_ptr<utils::ConnectionHolder> &conn) {
+Packet CipherPair::receive_encoded(std::unique_ptr<ConnectionHolder> &conn) {
     // TODO: synchronize with send_cipher_ctx
     int nonce = recv_nonce++;
     shn_nonce(&recv_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
@@ -51,10 +49,7 @@ Packet CipherPair::receive_encoded(std::unique_ptr<utils::ConnectionHolder> &con
     auto mac = conn->read_fully(4);
     std::vector<uint8_t> expected_mac(4);
     shn_finish(&recv_cipher_ctx, expected_mac.data(), expected_mac.size());
-    if (mac != expected_mac) {
-        // TODO: Handle error!
-        std::cout << "MACs don't match!" << std::endl;
-    }
+    if (mac != expected_mac) throw std::runtime_error("MACs don't match!");
 
     return {cmd, payload};
 }
