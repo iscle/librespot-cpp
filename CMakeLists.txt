@@ -34,7 +34,7 @@ add_executable(librespot_cpp
         src/connection_holder.cpp src/connection_holder.h src/proxy_settings.cpp src/proxy_settings.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS})
-target_include_directories(librespot_cpp PUBLIC lib/)
+target_include_directories(librespot_cpp PUBLIC lib/ lib/rapidjson/include)
 target_link_libraries(librespot_cpp proto ${OPENSSL_LIBRARIES} pthread spdlog::spdlog)
 
 #target_compile_options(librespot_cpp PRIVATE -Wall -Wextra -O0 -g)
