@@ -10,23 +10,27 @@
 #include <cstdint>
 #include <atomic>
 #include <shannon/Shannon.h>
+#include <mutex>
 #include "packet.h"
 #include "../utils.h"
 #include "../connection_holder.h"
 
 class CipherPair {
 public:
-    CipherPair(uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size);
+    CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size);
 
-    void send_encoded(std::unique_ptr<ConnectionHolder> &conn, uint8_t cmd, std::vector<uint8_t> &payload);
+    void send_encoded(uint8_t cmd, std::vector<uint8_t> &payload);
 
-    Packet receive_encoded(std::unique_ptr<ConnectionHolder> &conn);
+    Packet receive_encoded();
 
 private:
+    const std::shared_ptr<Connection> connection;
+    std::mutex send_mutex;
+    std::mutex recv_mutex;
     shn_ctx send_cipher_ctx;
     shn_ctx recv_cipher_ctx;
-    std::atomic<int> send_nonce;
-    std::atomic<int> recv_nonce;
+    std::atomic<unsigned int> send_nonce;
+    std::atomic<unsigned int> recv_nonce;
 };
 
 

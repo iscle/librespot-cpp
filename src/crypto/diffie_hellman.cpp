@@ -31,12 +31,12 @@ DiffieHellman::DiffieHellman() {
     BIGNUM *bn_p = BN_bin2bn(P_BYTES, sizeof(P_BYTES), nullptr);
     BIGNUM *bn_g = BN_bin2bn(G_BYTES, sizeof(G_BYTES), nullptr);
     if (ctx == nullptr || bn_public_key == nullptr || bn_private_key == nullptr || bn_p == nullptr || bn_g == nullptr) {
-        // TODO: Handle error
         if (bn_g != nullptr) BN_free(bn_g);
         if (bn_p != nullptr) BN_free(bn_p);
         if (bn_private_key != nullptr) BN_free(bn_private_key);
         if (bn_public_key != nullptr) BN_free(bn_public_key);
         if (ctx != nullptr) BN_CTX_free(ctx);
+        throw std::runtime_error("Failed to initialise BN_CTX or BIGNUMs!");
     }
 
     ret = BN_mod_exp(bn_public_key, bn_g, bn_private_key, bn_p, ctx);

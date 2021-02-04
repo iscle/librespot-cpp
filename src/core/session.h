@@ -9,6 +9,7 @@
 #include <vector>
 #include <proto/authentication.pb.h>
 #include <thread>
+#include <proto/keyexchange.pb.h>
 #include "../crypto/cipher_pair.h"
 #include "../utils.h"
 #include "../mercury/mercury_client.h"
@@ -21,14 +22,12 @@
 class Session {
 public:
     bool running;
-    std::unique_ptr<ConnectionHolder> conn;
+    const std::shared_ptr<Connection> conn;
     std::unique_ptr<CipherPair> cipher_pair;
 
-    explicit Session(const std::string &addr);
+    explicit Session(std::shared_ptr<Connection> connection);
 
     ~Session();
-
-    static std::unique_ptr<Session> create();
 
     void connect();
 
@@ -74,6 +73,16 @@ private:
     void send_unchecked(Packet::Type cmd, std::vector<uint8_t> &payload);
 
     void send_unchecked(Packet::Type cmd, std::string &payload);
+
+    void send_client_hello(utils::ByteArray &acc, DiffieHellman &dh);
+
+    static void check_gs_signature(spotify::APResponseMessage &response);
+
+    static std::vector<uint8_t> solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response, utils::ByteArray &data);
+
+    void send_challenge_response(std::vector<uint8_t> &challenge);
+
+    void read_connection_status();
 };
 
 #endif //LIBRESPOT_C_SESSION_H

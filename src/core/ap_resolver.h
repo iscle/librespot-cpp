@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-class ApResolver {
+class APResolver {
 public:
-    static ApResolver &get_instance();
+    static APResolver &get_instance();
 
     std::string &get_dealer();
 

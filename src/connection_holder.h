@@ -9,8 +9,12 @@
 #include <memory>
 #include <vector>
 
-class ConnectionHolder {
+class Connection {
 public:
+    explicit Connection(const std::string &addr);
+
+    Connection(const std::string &ap_addr, const std::string &ap_port);
+
     void write_int(int data) const;
 
     void write(const uint8_t *data, size_t size) const;
@@ -21,15 +25,13 @@ public:
 
     int read_int() const;
 
-    ssize_t read(uint8_t *data, size_t len) const;
+    std::vector<uint8_t> read(size_t size) const;
 
-    std::vector<uint8_t> read_fully(size_t len) const;
+    std::vector<uint8_t> read_fully(size_t size) const;
 
     void set_timeout(int timeout);
 
     void restore_timeout();
-
-    ConnectionHolder(const std::string &addr);
 
     void write(const std::vector<uint8_t> &data) const;
 
@@ -38,6 +40,7 @@ private:
     bool original_timeout_set = false;
     struct timeval original_timeout;
 
+    void init(const std::string &ap_addr, const std::string &ap_port);
 };
 
 

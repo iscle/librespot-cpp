@@ -8,12 +8,19 @@
 #include <spdlog/spdlog.h>
 #include "connection_holder.h"
 
-ConnectionHolder::ConnectionHolder(const std::string &addr) {
+Connection::Connection(const std::string &addr) {
     size_t colon = addr.find(':');
     std::string ap_addr = addr.substr(0, colon);
     std::string ap_port = addr.substr(colon + 1);
+    init(ap_addr, ap_port);
+}
 
-    spdlog::info("Connecting to {}", addr);
+Connection::Connection(const std::string &ap_addr, const std::string &ap_port) {
+    init(ap_addr, ap_port);
+}
+
+void Connection::init(const std::string &ap_addr, const std::string &ap_port) {
+    spdlog::info("Connecting to {}:{}", ap_addr, ap_port);
 
     struct addrinfo hints = {};
     struct addrinfo *addrs;
@@ -41,39 +48,39 @@ ConnectionHolder::ConnectionHolder(const std::string &addr) {
 
     freeaddrinfo(addrs);
 
-    if (sockfd == -1) throw std::runtime_error("Failed to connect to " + addr);
+    if (sockfd == -1) throw std::runtime_error("Could not connect to accesspoint");
 
     this->sockfd = sockfd;
 }
 
-void ConnectionHolder::write_byte(uint8_t data) const {
+void Connection::write_byte(uint8_t data) const {
     if (::write(sockfd, &data, 1) != 1)
         throw std::runtime_error("Failed to write data!");
 }
 
-void ConnectionHolder::write(const std::string &data) const {
+void Connection::write(const std::string &data) const {
     if (::write(sockfd, data.c_str(), data.size()) != (ssize_t) data.size())
         throw std::runtime_error("Failed to write data!");
 }
 
-void ConnectionHolder::write(const std::vector<uint8_t> &data) const {
+void Connection::write(const std::vector<uint8_t> &data) const {
     if (::write(sockfd, data.data(), data.size()) != (ssize_t) data.size())
         throw std::runtime_error("Failed to write data!");
 }
 
-void ConnectionHolder::write(const uint8_t *data, size_t size) const {
+void Connection::write(const uint8_t *data, size_t size) const {
     if (::write(sockfd, data, size) != size)
         throw std::runtime_error("Failed to write data!");
 }
 
-void ConnectionHolder::write_int(int data) const {
+void Connection::write_int(int data) const {
     write_byte((data >> 24) & 0xFF);
     write_byte((data >> 16) & 0xFF);
     write_byte((data >> 8) & 0xFF);
     write_byte((data >> 0) & 0xFF);
 }
 
-int ConnectionHolder::read_int() const {
+int Connection::read_int() const {
     int ret;
     uint8_t tmp;
     int data = 0;
@@ -93,12 +100,12 @@ int ConnectionHolder::read_int() const {
     return data;
 }
 
-std::vector<uint8_t> ConnectionHolder::read_fully(size_t len) const {
-    std::vector<uint8_t> data(len);
+std::vector<uint8_t> Connection::read_fully(size_t size) const {
+    std::vector<uint8_t> data(size);
     size_t n = 0;
 
-    while (n < len) {
-        ssize_t count = ::read(this->sockfd, &data[n], len - n);
+    while (n < size) {
+        ssize_t count = ::read(this->sockfd, &data[n], size - n);
         if (count < 0)
             throw std::runtime_error("Failed to read data!");
         n += count;
@@ -107,17 +114,22 @@ std::vector<uint8_t> ConnectionHolder::read_fully(size_t len) const {
     return data;
 }
 
-ssize_t ConnectionHolder::read(uint8_t *data, size_t len) const {
-    return ::read(sockfd, data, len);
+std::vector<uint8_t> Connection::read(size_t size) const {
+    std::vector<uint8_t> data(size);
+    ssize_t ret;
+    ret = ::read(sockfd, &data[0], size);
+    if (ret < 0) data.resize(0);
+    else data.resize(ret);
+    return data;
 }
 
-void ConnectionHolder::restore_timeout() {
+void Connection::restore_timeout() {
     if (original_timeout_set &&
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &original_timeout, sizeof(original_timeout)) < 0)
         spdlog::debug("Failed to restore socket send timeout.");
 }
 
-void ConnectionHolder::set_timeout(int timeout) {
+void Connection::set_timeout(int timeout) {
     struct timeval new_timeout = {};
     new_timeout.tv_sec = timeout;
 
