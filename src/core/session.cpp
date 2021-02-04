@@ -46,7 +46,6 @@ void Session::connect() {
     DiffieHellman dh;
 
     send_client_hello(acc, dh);
-    //get_client_hello_response(acc, dh);
 
     // Read ClientHello response
     int length = conn->read_int();
@@ -91,7 +90,7 @@ void Session::send_client_hello(utils::ByteArray &acc, DiffieHellman &dh) {
     client_hello.set_padding(padding, sizeof(padding));
 
     auto client_hello_string = client_hello.SerializeAsString();
-    unsigned int length = 1 + 1 + 4 + (int) client_hello_string.size();
+    unsigned int length = 1 + 1 + 4 + (unsigned int) client_hello_string.size();
     conn->write_byte(0);
     conn->write_byte(4);
     conn->write_int(length);
@@ -164,7 +163,7 @@ void Session::send_challenge_response(std::vector<uint8_t> &challenge) {
     client_response_plaintext.mutable_crypto_response();
 
     auto client_response_plaintext_string = client_response_plaintext.SerializeAsString();
-    unsigned int length = 4 + (int) client_response_plaintext_string.size();
+    unsigned int length = 4 + (unsigned int) client_response_plaintext_string.size();
     conn->write_int(length);
     conn->write(client_response_plaintext_string);
 }
@@ -188,8 +187,8 @@ void Session::read_connection_status() {
     }
 }
 
-void Session::authenticate(const spotify::LoginCredentials &credentials) {
-    authenticate_partial((spotify::LoginCredentials &) credentials, false);
+void Session::authenticate(spotify::LoginCredentials &credentials) {
+    authenticate_partial(credentials, false);
 
     // TODO: synchronized (auth_lock) {
     mercury_client = std::make_unique<MercuryClient>();
@@ -212,7 +211,6 @@ void Session::authenticate(const spotify::LoginCredentials &credentials) {
     //TimeProvider::init();
     //dealer.connect();
 
-    spdlog::info("Authenticated as {}!", ap_welcome.canonical_username());
     //mercury().interested_in("spotify::user::attributes::update", listener?);
     //dealer().addMessageListener(listener?, "hm://connect-state/v1/connect/logout");
 }
@@ -314,6 +312,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
             // TODO: Notify all auth_lock
         }
 
+        spdlog::info("Authenticated as {}!", ap_welcome.canonical_username());
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;

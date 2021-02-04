@@ -118,7 +118,7 @@ std::vector<uint8_t> Connection::read(size_t size) const {
     std::vector<uint8_t> data(size);
     ssize_t ret;
     ret = ::read(sockfd, &data[0], size);
-    if (ret < 0) data.resize(0);
+    if (ret < 0) data.clear();
     else data.resize(ret);
     return data;
 }

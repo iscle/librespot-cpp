@@ -31,7 +31,7 @@ public:
 
     void connect();
 
-    void authenticate(const spotify::LoginCredentials &);
+    void authenticate(spotify::LoginCredentials &credentials);
 
     void send(Packet::Type &cmd, std::vector<uint8_t> &payload);
 

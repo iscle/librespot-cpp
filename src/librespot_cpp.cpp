@@ -16,7 +16,7 @@ void LibrespotCpp::start() {
     spotify::LoginCredentials login_credentials;
     login_credentials.set_typ(spotify::AUTHENTICATION_USER_PASS);
     login_credentials.set_username("albertiscle9@gmail.com");
-    login_credentials.set_auth_data("");
+    login_credentials.set_auth_data("Porsche911CotxeGuapo!");
 
     auto connection = std::make_shared<Connection>(APResolver::get_instance().get_accesspoint());
     Session session(connection);
