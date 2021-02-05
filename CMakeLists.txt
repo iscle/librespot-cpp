@@ -40,29 +40,29 @@ add_executable(librespot_cpp
         src/exceptions/feeder_exception.h
         src/exceptions/chunk_exception.h
         src/exceptions/security_exception.h
-        )
+        src/network/zeroconf.cpp src/network/zeroconf.h)
 
 # OpenSSL
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OPENSSL REQUIRED openssl)
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OPENSSL_INCLUDE_DIRS})
+#target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OPENSSL_INCLUDE_DIRS})
 
 # spdlog
 add_subdirectory(lib/spdlog)
 
 # Protocol Buffers
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(librespot_cpp ${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIRS} lib lib/tremor lib/rapidjson/include)
 add_subdirectory(proto)
 
 # Tremor
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/tremor)
+#target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/tremor)
 
 # RapidJson
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/rapidjson/include)
+#target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/rapidjson/include)
 
 # cpp-httplib
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/)
+#target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/)
 
-target_link_libraries(${CMAKE_PROJECT_NAME} ${OPENSSL_LIBRARIES} spdlog::spdlog proto pthread)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${OPENSSL_LIBRARIES} spdlog::spdlog proto pthread avahi-client avahi-common)
 
 #target_compile_options(librespot_cpp PRIVATE -Wall -Wextra -O0 -g)

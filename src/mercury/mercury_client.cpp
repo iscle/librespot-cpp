@@ -30,7 +30,7 @@ void MercuryClient::subscribe(std::string &uri, SubListener *listener) {
         subscriptions.emplace_back(uri, listener, true);
     }
 
-    spdlog::trace("Subscribed successfully to {}!", uri);
+    SPDLOG_TRACE("Subscribed successfully to {}!", uri);
 }
 
 void MercuryClient::unsubscribe(std::string &uri) {
@@ -42,7 +42,7 @@ void MercuryClient::unsubscribe(std::string &uri) {
         return l.matches(uri);
     });
 
-    spdlog::trace("Unsubscribed successfully from {}!", uri);
+    SPDLOG_TRACE("Unsubscribed successfully from {}!", uri);
 }
 
 MercuryResponse MercuryClient::send_sync(RawMercuryRequest &request) {
@@ -109,7 +109,7 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
     seq_holder++;
     // TODO: }
 
-    spdlog::trace("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(), request.header.method());
+    SPDLOG_TRACE("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(), request.header.method());
 
     out.write_short(4); // Sequence size
     out.write_int(seq); // Sequence id
@@ -154,7 +154,7 @@ void MercuryClient::dispatch(Packet &packet) {
         partial = partials[seq];
     }
 
-    spdlog::trace("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
+    SPDLOG_TRACE("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
 
     for (int i = 0; i < parts; i++) {
         short size = payload.get_short();
@@ -181,12 +181,12 @@ void MercuryClient::dispatch(Packet &packet) {
         //}
 
         if (!dispatched)
-            spdlog::debug("Couldn't dispatch Mercury event {{seq: {}, uri: {}, code: {}}}", seq, header.uri(), header.status_code());
+            SPDLOG_DEBUG("Couldn't dispatch Mercury event {{seq: {}, uri: {}, code: {}}}", seq, header.uri(), header.status_code());
     } else if (packet.cmd == Packet::Type::MercuryReq || packet.cmd == Packet::Type::MercurySub ||
                packet.cmd == Packet::Type::MercuryUnsub) {
 
     } else {
-        spdlog::warn("Couldn't handle packet, seq: {}, uri: {}, code: {}", seq, header.uri(), header.status_code());
+        SPDLOG_WARN("Couldn't handle packet, seq: {}, uri: {}, code: {}", seq, header.uri(), header.status_code());
     }
 }
 

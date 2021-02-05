@@ -20,7 +20,7 @@ Connection::Connection(const std::string &ap_addr, const std::string &ap_port) {
 }
 
 void Connection::init(const std::string &ap_addr, const std::string &ap_port) {
-    spdlog::info("Connecting to {}:{}", ap_addr, ap_port);
+    SPDLOG_INFO("Connecting to {}:{}", ap_addr, ap_port);
 
     struct addrinfo hints = {};
     struct addrinfo *addrs;
@@ -126,7 +126,7 @@ std::vector<uint8_t> Connection::read(size_t size) const {
 void Connection::restore_timeout() {
     if (original_timeout_set &&
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &original_timeout, sizeof(original_timeout)) < 0)
-        spdlog::debug("Failed to restore socket send timeout.");
+        SPDLOG_DEBUG("Failed to restore socket send timeout.");
 }
 
 void Connection::set_timeout(int timeout) {
@@ -138,5 +138,5 @@ void Connection::set_timeout(int timeout) {
         original_timeout_set = true;
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &new_timeout, sizeof(new_timeout)) < 0)
-        spdlog::debug("Failed to set socket send timeout.");
+        SPDLOG_DEBUG("Failed to set socket send timeout.");
 }

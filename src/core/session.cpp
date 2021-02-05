@@ -38,7 +38,7 @@ Session::Session(std::shared_ptr<Connection> connection) : conn(std::move(connec
     this->running = false;
     this->auth_lock = false;
 
-    spdlog::info("Created new session! {{deviceId: {}}}", "nullptr", false);
+    SPDLOG_INFO("Created new session! {{deviceId: {}}}", "nullptr", false);
 }
 
 void Session::connect() {
@@ -70,7 +70,7 @@ void Session::connect() {
     auth_lock = true;
     // TODO: end synchronize auth_lock
 
-    spdlog::info("Connected successfully!");
+    SPDLOG_INFO("Connected successfully!");
 }
 
 void Session::send_client_hello(utils::ByteArray &acc, DiffieHellman &dh) {
@@ -114,19 +114,19 @@ void Session::check_gs_signature(spotify::APResponseMessage &response) {
 
     if (EVP_DigestVerifyInit(rsa_verify_ctx, nullptr, EVP_sha1(), nullptr, pub_key) != 1) {
         // TODO: Handle error
-        spdlog::error("Failed to init digest verify!");
+        SPDLOG_ERROR("Failed to init digest verify!");
     }
 
     auto gs = response.challenge().login_crypto_challenge().diffie_hellman().gs();
     if (EVP_DigestVerifyUpdate(rsa_verify_ctx, gs.c_str(), gs.size()) != 1) {
         // TODO: Handle error
-        spdlog::error("Failed to update digest verify!");
+        SPDLOG_ERROR("Failed to update digest verify!");
     }
 
     auto gs_signature = response.challenge().login_crypto_challenge().diffie_hellman().gs_signature();
     if (EVP_DigestVerifyFinal(rsa_verify_ctx, (const unsigned char *) gs_signature.c_str(), gs_signature.size()) != 1) {
         // TODO: Handle error
-        spdlog::error("Failed to verify digest!");
+        SPDLOG_ERROR("Failed to verify digest!");
     }
 
     EVP_MD_CTX_free(rsa_verify_ctx);
@@ -178,11 +178,11 @@ void Session::read_connection_status() {
         auto payload = conn->read_fully(length - 4);
         spotify::APResponseMessage ap_error_message;
         ap_error_message.ParseFromArray(payload.data(), payload.size());
-        spdlog::error("Connection failed! Error code: {}!", ap_error_message.login_failed().error_code());
+        SPDLOG_ERROR("Connection failed! Error code: {}!", ap_error_message.login_failed().error_code());
         throw std::runtime_error("Connection failed! Error code: " + std::to_string(ap_error_message.login_failed().error_code()));
     } else if (!scrap.empty()) {
         // TODO: Handle error
-        spdlog::error("Read unknown data!");
+        SPDLOG_ERROR("Read unknown data!");
         throw std::runtime_error("Read unknown data!");
     }
 }
@@ -275,7 +275,7 @@ void session_packet_receiver(Session *session) {
 void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock) {
     if (cipher_pair == nullptr) {
         // TODO: Handle error
-        spdlog::error("Connection not established!");
+        SPDLOG_ERROR("Connection not established!");
     }
 
     spotify::ClientResponseEncrypted client_response_encrypted;
@@ -312,15 +312,15 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
             // TODO: Notify all auth_lock
         }
 
-        spdlog::info("Authenticated as {}!", ap_welcome.canonical_username());
+        SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;
         login_failed.ParseFromArray(packet.payload.data(), packet.payload.size());
-        spdlog::error("Login failed! Error code: {}", login_failed.error_code());
+        SPDLOG_ERROR("Login failed! Error code: {}", login_failed.error_code());
         throw std::runtime_error("Login failed! Error code: " + std::to_string(login_failed.error_code()));
     } else {
-        spdlog::warn("Unknown command received! cmd: {0:x}", packet.cmd);
+        SPDLOG_WARN("Unknown command received! cmd: {0:x}", packet.cmd);
     }
 }
 
@@ -335,7 +335,7 @@ void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
 
 void Session::send(Packet::Type &cmd, std::vector<uint8_t> &payload) {
     if (/*closing || */conn == nullptr) {
-        spdlog::debug("Connection was broken while closing.");
+        SPDLOG_DEBUG("Connection was broken while closing.");
         return;
     }
 
@@ -354,7 +354,7 @@ const std::unique_ptr<MercuryClient> &Session::mercury() const {
     // waitAuthLock();
     if (mercury_client == nullptr) {
         // TODO: Handle error
-        spdlog::error("Session isn't authenticated");
+        SPDLOG_ERROR("Session isn't authenticated");
     }
     return mercury_client;
 }
@@ -363,7 +363,7 @@ const std::unique_ptr<AudioKeyManager> &Session::audio_key() const {
     // waitAuthLock();
     if (audio_key_manager == nullptr) {
         // TODO: Handle error
-        spdlog::error("Session isn't authenticated");
+        SPDLOG_ERROR("Session isn't authenticated");
     }
     return audio_key_manager;
 }
@@ -372,7 +372,7 @@ const std::unique_ptr<ChannelManager> &Session::channel() const {
     // waitAuthLock();
     if (channel_manager == nullptr) {
         // TODO: Handle error
-        spdlog::error("Session isn't authenticated");
+        SPDLOG_ERROR("Session isn't authenticated");
     }
     return channel_manager;
 }
