@@ -17,7 +17,9 @@ void LibrespotCpp::start() {
     SPDLOG_INFO("Welcome to librespot-c++!");
 
     Zeroconf zeroconf;
-    zeroconf.start_server();
+    zeroconf.start();
+
+    SPDLOG_INFO("Outside! :)");
 
     while (1);
 

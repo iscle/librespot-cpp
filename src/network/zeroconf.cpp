@@ -9,7 +9,6 @@
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
 #include <avahi-common/error.h>
-#include <avahi-common/simple-watch.h>
 #include <spdlog/spdlog.h>
 #include "zeroconf.h"
 #include "../utils.h"
@@ -20,18 +19,21 @@
 
 #define MIN_PORT 1024
 #define MAX_PORT 65536
-#define EOL {'\r', '\n'};
-
-static AvahiSimplePoll *simple_poll = nullptr;
 
 Zeroconf::Zeroconf() {
     listen_port = 10374;
+    group = nullptr;
+    simple_poll = nullptr;
 }
 
 Zeroconf::Zeroconf(int listen_port) : listen_port(listen_port) {
+    group = nullptr;
+    simple_poll = nullptr;
 }
 
 Zeroconf::~Zeroconf() {
+    avahi_simple_poll_quit(simple_poll);
+    avahi_thread.join();
     if (svr.is_running()) svr.stop();
     server_thread.join();
 }
@@ -143,100 +145,97 @@ void Zeroconf::listen() {
 }
 
 static void entry_group_callback(AvahiEntryGroup *g, AvahiEntryGroupState state, void *userdata) {
-    ((Zeroconf *) userdata)->group = g;
-    /* Called whenever the entry group state changes */
-    if (state == AVAHI_ENTRY_GROUP_FAILURE) {
-        fprintf(stderr, "Entry group failure: %s\n",
-                avahi_strerror(avahi_client_errno(avahi_entry_group_get_client(g))));
-        avahi_simple_poll_quit(simple_poll);
+    auto *instance = static_cast<Zeroconf *>(userdata);
+    instance->group = g;
+    if (state == AVAHI_ENTRY_GROUP_FAILURE ||
+        state == AVAHI_ENTRY_GROUP_COLLISION) {
+        SPDLOG_ERROR("An entry group error occurred.");
+        avahi_simple_poll_quit(instance->simple_poll);
     }
 }
 
 static void create_services(AvahiClient *c, Zeroconf *instance) {
-    int ret;
+    if (instance->group == nullptr) {
+        instance->group = avahi_entry_group_new(c, entry_group_callback, instance);
+        if (instance->group == nullptr) {
+            SPDLOG_ERROR("Failed to create new entry group: {}", avahi_strerror(avahi_client_errno(c)));
+            avahi_simple_poll_quit(instance->simple_poll);
+            return;
+        }
+    }
 
-    /* If this is the first time we're called, let's create a new
-     * entry group if necessary */
-    if (!instance->group && !(instance->group = avahi_entry_group_new(c, entry_group_callback, instance))) {
-        fprintf(stderr, "avahi_entry_group_new() failed: %s\n", avahi_strerror(avahi_client_errno(c)));
-        goto fail;
-    }
-    /* If the group is empty (either because it was just created, or
-     * because it was reset previously, add our entries.  */
     if (avahi_entry_group_is_empty(instance->group)) {
-        if ((ret = avahi_entry_group_add_service(instance->group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
-                                                 static_cast<AvahiPublishFlags>(0), "spotify-connect",
-                                                 "_spotify-connect._tcp", nullptr, nullptr, instance->listen_port,
-                                                 "CPath=/", "VERSION=1.0", "Stack=SP", nullptr)) < 0) {
-            fprintf(stderr, "Failed to add _spotify-connect._tcp service: %s\n", avahi_strerror(ret));
-            goto fail;
+        int ret = avahi_entry_group_add_service(instance->group,
+                                            AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
+                                            static_cast<AvahiPublishFlags>(0),
+                                            "spotify-connect","_spotify-connect._tcp",
+                                            nullptr, nullptr, instance->listen_port,
+                                            "CPath=/", "VERSION=1.0", "Stack=SP", nullptr);
+        if (ret < 0) {
+            SPDLOG_ERROR("Failed to add _spotify-connect._tcp service: {}", avahi_strerror(ret));
+            avahi_simple_poll_quit(instance->simple_poll);
+            return;
         }
-        if ((ret = avahi_entry_group_commit(instance->group)) < 0) {
-            fprintf(stderr, "Failed to commit entry group: %s\n", avahi_strerror(ret));
-            goto fail;
+
+        ret = avahi_entry_group_commit(instance->group);
+        if (ret < 0) {
+            SPDLOG_ERROR("Failed to commit entry group: {}", avahi_strerror(ret));
+            avahi_simple_poll_quit(instance->simple_poll);
+            return;
         }
     }
-    return;
-    fail:
-    avahi_simple_poll_quit(simple_poll);
 }
 
 static void client_callback(AvahiClient *c, AvahiClientState state, void *userdata) {
     auto *instance = static_cast<Zeroconf *>(userdata);
-    /* Called whenever the client or server state changes */
+
     switch (state) {
         case AVAHI_CLIENT_S_RUNNING:
-            /* The server has startup successfully and registered its host
-             * name on the network, so it's time to create our services */
             create_services(c, instance);
             break;
         case AVAHI_CLIENT_FAILURE:
-            fprintf(stderr, "Client failure: %s\n", avahi_strerror(avahi_client_errno(c)));
-            avahi_simple_poll_quit(simple_poll);
+            SPDLOG_ERROR("Client failure: {}", avahi_strerror(avahi_client_errno(c)));
+            avahi_simple_poll_quit(instance->simple_poll);
             break;
         case AVAHI_CLIENT_S_COLLISION:
-            /* Let's drop our registered services. When the server is back
-             * in AVAHI_SERVER_RUNNING state we will register them
-             * again with the new host name. */
         case AVAHI_CLIENT_S_REGISTERING:
-            fprintf(stdout, "Client registering!\n");
             if (instance->group)
                 avahi_entry_group_reset(instance->group);
-            break;
-        case AVAHI_CLIENT_CONNECTING:
-            fprintf(stdout, "Client connecting!\n");
             break;
     }
 }
 
 void Zeroconf::register_avahi() {
-    SPDLOG_DEBUG("Registering avahi...");
-    /* Allocate main loop object */
     simple_poll = avahi_simple_poll_new();
     if (simple_poll == nullptr) {
         SPDLOG_ERROR("Failed to create simple poll object!");
         return;
     }
 
-    /* Allocate a new client */
     int error;
     AvahiClient *client = avahi_client_new(avahi_simple_poll_get(simple_poll),
-                                           static_cast<AvahiClientFlags>(0), client_callback, this, &error);
+                                           static_cast<AvahiClientFlags>(0),
+                                           client_callback, this, &error);
     if (client == nullptr) {
         SPDLOG_ERROR("Failed to create client: {}", avahi_strerror(error));
         avahi_simple_poll_free(simple_poll);
         return;
     }
 
-    /* Run the main loop */
-    avahi_simple_poll_loop(simple_poll);
-    avahi_client_free(client);
-    avahi_simple_poll_free(simple_poll);
+    avahi_thread = std::thread([this, client] {
+        avahi_simple_poll_loop(simple_poll); // Blocking!
+        avahi_client_free(client);
+        avahi_simple_poll_free(simple_poll);
+    });
 }
 
-void Zeroconf::start_server() {
+void Zeroconf::start() {
     listen();
     register_avahi();
+}
+
+void Zeroconf::stop() {
+
 }
 
 std::string
@@ -256,17 +255,17 @@ Zeroconf::get_info(std::string device_id, std::string remote_name, std::string a
     info->AddMember("activeUser", utils::json_string(active_user, allocator), allocator);
     info->AddMember("publicKey", utils::json_string(public_key, allocator), allocator);
     info->AddMember("deviceType", utils::json_string(device_type, allocator), allocator);
-    info->AddMember("libraryVersion", "?.?.?", allocator);
+    info->AddMember("libraryVersion", "?.?.?", allocator); // TODO: Fix this value!
     info->AddMember("accountReq", "PREMIUM", allocator);
     info->AddMember("brandDisplayName", "librespot-org", allocator);
     info->AddMember("modelDisplayName", "librespot-c++", allocator);
-    info->AddMember("resolverVersion", 0, allocator);
-    info->AddMember("groupStatus", "", allocator);
+    info->AddMember("resolverVersion", 0, allocator); // TODO: Fix this value!
+    info->AddMember("groupStatus", "", allocator); // TODO: Fix this value!
     info->AddMember("tokenType", "default", allocator);
-    info->AddMember("clientID", "", allocator);
-    info->AddMember("productID", 0, allocator);
+    info->AddMember("clientID", "", allocator); // TODO: Fix this value!
+    info->AddMember("productID", 0, allocator); // TODO: Fix this value!
     info->AddMember("scope", "streaming,client-authorization-universal", allocator);
-    info->AddMember("availability", "", allocator);
+    info->AddMember("availability", "", allocator); // TODO: Fix this value!
     info->AddMember("voiceSupport", "NO", allocator);
 
     rapidjson::StringBuffer buffer;

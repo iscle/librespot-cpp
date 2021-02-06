@@ -10,12 +10,14 @@
 #include <unistd.h>
 #include <cpp-httplib/httplib.h>
 #include <avahi-client/publish.h>
+#include <avahi-common/simple-watch.h>
 #include "../crypto/diffie_hellman.h"
 
 class Zeroconf {
 public:
     int listen_port;
-    AvahiEntryGroup *group = nullptr;
+    AvahiEntryGroup *group;
+    AvahiSimplePoll *simple_poll;
 
     Zeroconf();
 
@@ -23,12 +25,13 @@ public:
 
     ~Zeroconf();
 
-    void start_server();
+    void start();
 
 private:
     DiffieHellman keys;
     httplib::Server svr;
     std::thread server_thread;
+    std::thread avahi_thread;
 
     void listen();
 
@@ -39,6 +42,7 @@ private:
 
     static std::string get_successful_add_user();
 
+    void stop();
 };
 
 

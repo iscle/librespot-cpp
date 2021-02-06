@@ -27,7 +27,7 @@ add_executable(librespot_cpp
         src/audio/storage/channel_manager.cpp src/audio/storage/channel_manager.h
         src/core/time_provider.cpp src/core/time_provider.h
         src/core/event_service.cpp src/core/event_service.h
-        src/crypto/pbkdf2.cpp src/crypto/pbkdf2.h
+        src/crypto/pbkdf_2.cpp src/crypto/pbkdf_2.h
         src/dealer/dealer_client.cpp src/dealer/dealer_client.h
         src/mercury/raw_mercury_request.cpp src/mercury/raw_mercury_request.h
         src/librespot_cpp.cpp src/librespot_cpp.h
