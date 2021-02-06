@@ -38,7 +38,7 @@ Zeroconf::~Zeroconf() {
     server_thread.join();
 }
 
-void Zeroconf::listen() {
+void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callback) {
     SPDLOG_INFO("Starting zeroconf server at port {}", listen_port);
 
     svr.Get("/", [&](const httplib::Request &req, httplib::Response &res) {
@@ -133,7 +133,8 @@ void Zeroconf::listen() {
             }
 
             res.set_content(get_successful_add_user(), "application/json");
-            SPDLOG_DEBUG("Nice!");
+
+            callback(encrypted);
         } else if (action == "resetUsers") {
             SPDLOG_DEBUG("Received resetUsers on POST handler!");
         }
@@ -229,8 +230,8 @@ void Zeroconf::register_avahi() {
     });
 }
 
-void Zeroconf::start() {
-    listen();
+void Zeroconf::start(std::function<void(std::vector<uint8_t> &payload)> callback) {
+    listen(callback);
     register_avahi();
 }
 

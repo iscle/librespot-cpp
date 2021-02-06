@@ -25,7 +25,7 @@ public:
 
     ~Zeroconf();
 
-    void start();
+    void start(std::function<void(std::vector<uint8_t> &payload)> callback);
 
 private:
     DiffieHellman keys;
@@ -33,7 +33,7 @@ private:
     std::thread server_thread;
     std::thread avahi_thread;
 
-    void listen();
+    void listen(std::function<void(std::vector<uint8_t> &payload)> &callback);
 
     void register_avahi();
 
