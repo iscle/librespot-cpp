@@ -18,18 +18,27 @@ public:
     AvahiEntryGroup *group = nullptr;
 
     Zeroconf();
+
     Zeroconf(int listen_port);
+
     ~Zeroconf();
+
     void start_server();
+
 private:
     DiffieHellman keys;
     httplib::Server svr;
     std::thread server_thread;
 
     void listen();
+
     void register_avahi();
-    static std::unique_ptr<rapidjson::Document> get_default_info();
-    static std::unique_ptr<rapidjson::Document> get_successful_add_user();
+
+    std::string get_info(std::string device_id, std::string remote_name, std::string active_user,
+                         std::string public_key, std::string device_type);
+
+    static std::string get_successful_add_user();
+
 };
 
 

@@ -78,7 +78,9 @@ private:
 
     static void check_gs_signature(spotify::APResponseMessage &response);
 
-    static std::vector<uint8_t> solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response, utils::ByteArray &data);
+    static std::vector<uint8_t>
+    solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
+                    utils::ByteArray &data);
 
     void send_challenge_response(std::vector<uint8_t> &challenge);
 

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 #include <memory>
+#include <rapidjson/document.h>
 
 namespace utils {
     class ByteArray : public std::vector<uint8_t> {
@@ -46,6 +47,8 @@ namespace utils {
     };
 
     std::string generate_device_id();
+
+    rapidjson::Value json_string(std::string &str, rapidjson::Document::AllocatorType &allocator);
 }
 
 #endif //LIBRESPOT_C_UTILS_H

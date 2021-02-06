@@ -8,7 +8,8 @@
 #include <utility>
 #include "cipher_pair.h"
 
-CipherPair::CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size, uint8_t *recv_key, size_t recv_key_size) :
+CipherPair::CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size,
+                       uint8_t *recv_key, size_t recv_key_size) :
         connection(std::move(connection)), send_cipher_ctx({}), send_nonce(0), recv_cipher_ctx({}), recv_nonce(0) {
     shn_key(&send_cipher_ctx, send_key, send_key_size);
     shn_key(&recv_cipher_ctx, recv_key, recv_key_size);

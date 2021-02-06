@@ -134,7 +134,9 @@ void Session::check_gs_signature(spotify::APResponseMessage &response) {
     RSA_free(rsa);
 }
 
-std::vector<uint8_t> Session::solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response, utils::ByteArray &data) {
+std::vector<uint8_t>
+Session::solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
+                         utils::ByteArray &data) {
     auto shared_key = dh.compute_shared_key(response.challenge().login_crypto_challenge().diffie_hellman().gs());
     HMAC_CTX *hmac_ctx = HMAC_CTX_new();
     unsigned int tmp_len = EVP_MD_size(EVP_sha1());
@@ -158,7 +160,8 @@ std::vector<uint8_t> Session::solve_challenge(utils::ByteArray &acc, DiffieHellm
 
 void Session::send_challenge_response(std::vector<uint8_t> &challenge) {
     spotify::ClientResponsePlaintext client_response_plaintext;
-    client_response_plaintext.mutable_login_crypto_response()->mutable_diffie_hellman()->set_hmac(challenge.data(), challenge.size());
+    client_response_plaintext.mutable_login_crypto_response()->mutable_diffie_hellman()->set_hmac(challenge.data(),
+                                                                                                  challenge.size());
     client_response_plaintext.mutable_pow_response();
     client_response_plaintext.mutable_crypto_response();
 
@@ -179,7 +182,8 @@ void Session::read_connection_status() {
         spotify::APResponseMessage ap_error_message;
         ap_error_message.ParseFromArray(payload.data(), payload.size());
         SPDLOG_ERROR("Connection failed! Error code: {}!", ap_error_message.login_failed().error_code());
-        throw std::runtime_error("Connection failed! Error code: " + std::to_string(ap_error_message.login_failed().error_code()));
+        throw std::runtime_error(
+                "Connection failed! Error code: " + std::to_string(ap_error_message.login_failed().error_code()));
     } else if (!scrap.empty()) {
         // TODO: Handle error
         SPDLOG_ERROR("Read unknown data!");

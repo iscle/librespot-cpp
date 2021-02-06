@@ -15,12 +15,11 @@ void LibrespotCpp::start() {
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %s:%# - %v");
     SPDLOG_INFO("Welcome to librespot-c++!");
-    SPDLOG_DEBUG("Test debug log");
 
     Zeroconf zeroconf;
     zeroconf.start_server();
 
-    while(1);
+    while (1);
 
     spotify::LoginCredentials login_credentials;
     login_credentials.set_typ(spotify::AUTHENTICATION_USER_PASS);

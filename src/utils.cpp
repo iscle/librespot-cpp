@@ -92,3 +92,9 @@ std::vector<uint8_t> utils::ByteBuffer::get(size_t size) {
 
     return std::move(data);
 }
+
+rapidjson::Value utils::json_string(std::string &str, rapidjson::Document::AllocatorType &allocator) {
+    rapidjson::Value str_value;
+    str_value.SetString(str.c_str(), str.size(), allocator);
+    return std::move(str_value);
+}

@@ -109,7 +109,8 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
     seq_holder++;
     // TODO: }
 
-    SPDLOG_TRACE("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(), request.header.method());
+    SPDLOG_TRACE("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(),
+                 request.header.method());
 
     out.write_short(4); // Sequence size
     out.write_int(seq); // Sequence id
@@ -181,7 +182,8 @@ void MercuryClient::dispatch(Packet &packet) {
         //}
 
         if (!dispatched)
-            SPDLOG_DEBUG("Couldn't dispatch Mercury event {{seq: {}, uri: {}, code: {}}}", seq, header.uri(), header.status_code());
+            SPDLOG_DEBUG("Couldn't dispatch Mercury event {{seq: {}, uri: {}, code: {}}}", seq, header.uri(),
+                         header.status_code());
     } else if (packet.cmd == Packet::Type::MercuryReq || packet.cmd == Packet::Type::MercurySub ||
                packet.cmd == Packet::Type::MercuryUnsub) {
 

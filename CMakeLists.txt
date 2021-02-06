@@ -40,7 +40,11 @@ add_executable(librespot_cpp
         src/exceptions/feeder_exception.h
         src/exceptions/chunk_exception.h
         src/exceptions/security_exception.h
-        src/network/zeroconf.cpp src/network/zeroconf.h)
+        src/network/zeroconf.cpp src/network/zeroconf.h
+        src/crypto/base_64.cpp src/crypto/base_64.h
+        src/crypto/sha_1.cpp src/crypto/sha_1.h
+        src/crypto/aes_128.cpp src/crypto/aes_128.h
+        src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h)
 
 # OpenSSL
 find_package(PkgConfig REQUIRED)
@@ -64,5 +68,7 @@ add_subdirectory(proto)
 #target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE lib/)
 
 target_link_libraries(${CMAKE_PROJECT_NAME} ${OPENSSL_LIBRARIES} spdlog::spdlog proto pthread avahi-client avahi-common)
+
+add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
 
 #target_compile_options(librespot_cpp PRIVATE -Wall -Wextra -O0 -g)
