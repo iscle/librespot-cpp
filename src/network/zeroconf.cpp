@@ -13,7 +13,7 @@
 #include "zeroconf.h"
 #include "../utils.h"
 #include "../crypto/base_64.h"
-#include "../crypto/aes_128.h"
+#include "../crypto/aes.h"
 #include "../crypto/hmac_sha_1.h"
 #include "../crypto/sha_1.h"
 
@@ -38,7 +38,7 @@ Zeroconf::~Zeroconf() {
     server_thread.join();
 }
 
-void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callback) {
+void Zeroconf::listen(std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> &callback) {
     SPDLOG_INFO("Starting zeroconf server at port {}", listen_port);
 
     svr.Get("/", [&](const httplib::Request &req, httplib::Response &res) {
@@ -46,7 +46,7 @@ void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callba
         if (action == "getInfo") {
             SPDLOG_DEBUG("getInfo requested from {}:{}", req.remote_addr, req.remote_port);
 
-            auto info = get_info("209031ee9cc724ce46a6c4bf9140c70c4a9202c8", "librespot-c++", "",
+            auto info = get_info(utils::generate_device_id(), "librespot-c++", "",
                                  Base64::Encode(this->keys.get_public_key(), this->keys.get_public_key_length()),
                                  "AUTOMOBILE");
             SPDLOG_DEBUG("{}", info);
@@ -60,6 +60,7 @@ void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callba
         if (action == "addUser") {
             SPDLOG_DEBUG("addUser requested from {}:{}", req.remote_addr, req.remote_port);
 
+            auto device_id = utils::generate_device_id();
             auto blob = Base64::Decode(req.get_param_value("blob"));
             auto shared_key = keys.compute_shared_key(Base64::Decode(req.get_param_value("clientKey")));
             auto device_name = req.get_param_value("deviceName");
@@ -123,8 +124,9 @@ void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callba
                 return;
             }
 
-            AES128 aes128;
+            AES aes128(AES::Type::AES_128_CTR);
             aes128.init(encryption_key, iv);
+            aes128.set_padding(0);
             aes128.update(encrypted);
             ret = aes128.final(encrypted);
             if (ret != 1) {
@@ -134,7 +136,7 @@ void Zeroconf::listen(std::function<void(std::vector<uint8_t> &payload)> &callba
 
             res.set_content(get_successful_add_user(), "application/json");
 
-            callback(encrypted);
+            callback(device_id, user_name, encrypted);
         } else if (action == "resetUsers") {
             SPDLOG_DEBUG("Received resetUsers on POST handler!");
         }
@@ -230,7 +232,7 @@ void Zeroconf::register_avahi() {
     });
 }
 
-void Zeroconf::start(std::function<void(std::vector<uint8_t> &payload)> callback) {
+void Zeroconf::start(std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> callback) {
     listen(callback);
     register_avahi();
 }

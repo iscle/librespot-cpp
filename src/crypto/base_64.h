@@ -8,6 +8,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 class Base64 {
 public:
@@ -49,6 +50,14 @@ public:
     }
 
     static std::string Decode(const std::string &input) {
+        return Decode(reinterpret_cast<const uint8_t *>(input.data()), input.size());
+    }
+
+    static std::string Decode(const std::vector<uint8_t> &input) {
+        return Decode(input.data(), input.size());
+    }
+
+    static std::string Decode(const uint8_t *input, size_t in_len) {
         static constexpr unsigned char kDecodingTable[] = {
                 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
                 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
@@ -68,7 +77,6 @@ public:
                 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
         };
         std::string out;
-        size_t in_len = input.size();
         if (in_len % 4 != 0) throw std::runtime_error("Input data size is not a multiple of 4");
 
         size_t out_len = in_len / 4 * 3;

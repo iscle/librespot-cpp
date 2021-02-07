@@ -49,6 +49,11 @@ utils::ByteBuffer::ByteBuffer(std::vector<uint8_t> &vector) :
 
 }
 
+utils::ByteBuffer::ByteBuffer(std::string &string) :
+        vector(std::vector<uint8_t>(string.begin(), string.end())), pos(0) {
+
+}
+
 uint8_t utils::ByteBuffer::get() {
     uint8_t data = 0;
     data |= ((uint8_t) vector[pos++]) << 0;
@@ -97,4 +102,11 @@ rapidjson::Value utils::json_string(std::string &str, rapidjson::Document::Alloc
     rapidjson::Value str_value;
     str_value.SetString(str.c_str(), str.size(), allocator);
     return std::move(str_value);
+}
+
+int utils::read_blob_int(utils::ByteBuffer &buffer) {
+    int lo = buffer.get();
+    if ((lo & 0x80) == 0) return lo;
+    int hi = buffer.get();
+    return hi << 7 | (lo & 0x7f);
 }

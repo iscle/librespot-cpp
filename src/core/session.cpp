@@ -294,6 +294,8 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     Packet packet = cipher_pair->receive_encoded();
     if (packet.cmd == Packet::Type::APWelcome) {
         ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
+        SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
+
         receiver = std::make_unique<std::thread>(session_packet_receiver, this);
 
         std::vector<uint8_t> bytes0x0f(20);
@@ -315,8 +317,6 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
             auth_lock = false;
             // TODO: Notify all auth_lock
         }
-
-        SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;

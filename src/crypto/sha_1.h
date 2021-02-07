@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <string>
 #include <openssl/sha.h>
 
 class SHA1 {
@@ -17,6 +18,8 @@ public:
     int init();
 
     int update(std::vector<uint8_t> &data);
+
+    int update(std::string &data);
 
     int final(std::vector<uint8_t> &data);
 

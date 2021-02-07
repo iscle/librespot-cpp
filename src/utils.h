@@ -31,6 +31,8 @@ namespace utils {
     public:
         ByteBuffer(std::vector<uint8_t> &vector);
 
+        ByteBuffer(std::string &string);
+
         uint8_t get();
 
         short get_short();
@@ -42,13 +44,15 @@ namespace utils {
         std::vector<uint8_t> get(size_t size);
 
     private:
-        std::vector<uint8_t> &vector;
+        std::vector<uint8_t> vector;
         size_t pos;
     };
 
     std::string generate_device_id();
 
     rapidjson::Value json_string(std::string &str, rapidjson::Document::AllocatorType &allocator);
+
+    int read_blob_int(ByteBuffer &buffer);
 }
 
 #endif //LIBRESPOT_C_UTILS_H

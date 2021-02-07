@@ -43,8 +43,8 @@ add_executable(librespot_cpp
         src/network/zeroconf.cpp src/network/zeroconf.h
         src/crypto/base_64.cpp src/crypto/base_64.h
         src/crypto/sha_1.cpp src/crypto/sha_1.h
-        src/crypto/aes_128.cpp src/crypto/aes_128.h
-        src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h)
+        src/crypto/aes.cpp src/crypto/aes.h
+        src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h src/audio/decrypt/aes_audio_decrypt.cpp src/audio/decrypt/aes_audio_decrypt.h)
 
 # OpenSSL
 find_package(PkgConfig REQUIRED)
