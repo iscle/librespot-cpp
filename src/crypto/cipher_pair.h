@@ -5,10 +5,7 @@
 #ifndef LIBRESPOT_C_CIPHER_PAIR_H
 #define LIBRESPOT_C_CIPHER_PAIR_H
 
-
-#include <cstddef>
 #include <cstdint>
-#include <atomic>
 #include <shannon/Shannon.h>
 #include <mutex>
 #include "packet.h"
@@ -30,8 +27,8 @@ private:
     std::mutex recv_mutex;
     shn_ctx send_cipher_ctx;
     shn_ctx recv_cipher_ctx;
-    std::atomic<unsigned int> send_nonce;
-    std::atomic<unsigned int> recv_nonce;
+    unsigned int send_nonce;
+    unsigned int recv_nonce;
 };
 
 

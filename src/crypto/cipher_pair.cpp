@@ -2,10 +2,7 @@
 // Created by Iscle on 31/01/2021.
 //
 
-#include <cstring>
-#include <iostream>
-#include <memory>
-#include <utility>
+#include <netdb.h>
 #include "cipher_pair.h"
 
 CipherPair::CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size,
@@ -17,7 +14,7 @@ CipherPair::CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key
 
 void CipherPair::send_encoded(uint8_t cmd, std::vector<uint8_t> &payload) {
     std::lock_guard<std::mutex> lock(send_mutex);
-    int nonce = send_nonce++;
+    unsigned int nonce = htonl(send_nonce++);
     shn_nonce(&send_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
 
     utils::ByteArray buffer;
@@ -36,14 +33,14 @@ void CipherPair::send_encoded(uint8_t cmd, std::vector<uint8_t> &payload) {
 
 Packet CipherPair::receive_encoded() {
     std::lock_guard<std::mutex> lock(recv_mutex);
-    int nonce = recv_nonce++;
+    unsigned int nonce = htonl(recv_nonce++);
     shn_nonce(&recv_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
 
     auto header_bytes = connection->read_fully(3);
     shn_decrypt(&recv_cipher_ctx, header_bytes.data(), header_bytes.size());
 
     uint8_t cmd = header_bytes[0];
-    auto payload_size = (short) ((header_bytes[1] << 8) | (header_bytes[2] << 0));
+    auto payload_size = ((unsigned short) header_bytes[1] << 8) | ((unsigned short) header_bytes[2] << 0);
     auto payload = connection->read_fully(payload_size);
     shn_decrypt(&recv_cipher_ctx, payload.data(), payload.size());
 
