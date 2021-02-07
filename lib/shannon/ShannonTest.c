@@ -39,7 +39,7 @@ printLFSR(const char *s, WORD R[]) {
 
     if (!v) return;
     printf("%s\n", s);
-    for (i = 0; i < N; ++i) {
+    for (i = 0; i < SHANNON_N; ++i) {
         printf("%*s%08x\n", i * 4, "", R[i]);
     }
 }

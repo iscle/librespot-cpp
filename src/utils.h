@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include <rapidjson/document.h>
+#include "version.h"
 
 namespace utils {
     class ByteArray : public std::vector<uint8_t> {
@@ -53,6 +54,8 @@ namespace utils {
     rapidjson::Value json_string(std::string &str, rapidjson::Document::AllocatorType &allocator);
 
     int read_blob_int(ByteBuffer &buffer);
+
+    spotify::LoginCredentials decode_auth_blob(std::string &device_id, std::string &username, std::vector<uint8_t> &payload);
 }
 
 #endif //LIBRESPOT_C_UTILS_H

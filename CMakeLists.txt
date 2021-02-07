@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(librespot_cpp
         # Shannon
-        lib/shannon/ShannonRef.c lib/shannon/Shannon.h
+        lib/shannon/ShannonFast.c lib/shannon/Shannon.h
 
         # Tremor (TODO: Add compiler flags!)
         lib/tremor/bitwise.c lib/tremor/codebook.c lib/tremor/dsp.c lib/tremor/floor0.c lib/tremor/floor1.c
@@ -44,7 +44,8 @@ add_executable(librespot_cpp
         src/crypto/base_64.cpp src/crypto/base_64.h
         src/crypto/sha_1.cpp src/crypto/sha_1.h
         src/crypto/aes.cpp src/crypto/aes.h
-        src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h src/audio/decrypt/aes_audio_decrypt.cpp src/audio/decrypt/aes_audio_decrypt.h)
+        src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h
+        src/audio/decrypt/aes_audio_decrypt.cpp src/audio/decrypt/aes_audio_decrypt.h)
 
 # OpenSSL
 find_package(PkgConfig REQUIRED)

@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * on where they are combined into the register. Making it same as the
  * register length is a safe and conservative choice.
  */
-#define FOLD N        /* how many iterations of folding to do */
+#define FOLD SHANNON_N        /* how many iterations of folding to do */
 #define INITKONST 0x6996c53a /* value of KONST to use during key loading */
 #define KEYP 13        /* where to insert key/MAC words */
 
@@ -65,7 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * where logically R[0] is at position "zero". Note that this works for
  * both the stream register and the CRC register.
  */
-#define OFF(zero, i) (((zero)+(i)) % N)
+#define OFF(zero, i) (((zero)+(i)) % SHANNON_N)
 
 /* step the shift register */
 /* After stepping, "zero" moves right one place */
@@ -93,9 +93,9 @@ cycle(shn_ctx *c) {
     STEP(c, 0);
     /* shift register */
     t = c->R[0];
-    for (i = 1; i < N; ++i)
+    for (i = 1; i < SHANNON_N; ++i)
         c->R[i - 1] = c->R[i];
-    c->R[N - 1] = t;
+    c->R[SHANNON_N - 1] = t;
 }
 
 /* The Shannon MAC function is modelled after the concepts of Phelix and SHA.
@@ -124,9 +124,9 @@ crcfunc(shn_ctx *c, WORD i) {
     CRCFUNC(c, i, 0);
     /* now correct alignment of CRC accumulator */
     t = c->CRC[0];
-    for (i = 1; i < N; ++i)
+    for (i = 1; i < SHANNON_N; ++i)
         c->CRC[i - 1] = c->CRC[i];
-    c->CRC[N - 1] = t;
+    c->CRC[SHANNON_N - 1] = t;
 }
 
 /* Normal MAC word processing: do both SHA and CRC.
@@ -146,7 +146,7 @@ shn_initstate(shn_ctx *c) {
     /* Register initialised to Fibonacci numbers; Counter zeroed. */
     c->R[0] = 1;
     c->R[1] = 1;
-    for (i = 2; i < N; ++i)
+    for (i = 2; i < SHANNON_N; ++i)
         c->R[i] = c->R[i - 1] + c->R[i - 2];
     c->konst = INITKONST;
 }
@@ -157,7 +157,7 @@ static void
 shn_savestate(shn_ctx *c) {
     int i;
 
-    for (i = 0; i < N; ++i)
+    for (i = 0; i < SHANNON_N; ++i)
         c->initR[i] = c->R[i];
 }
 
@@ -167,7 +167,7 @@ static void
 shn_reloadstate(shn_ctx *c) {
     int i;
 
-    for (i = 0; i < N; ++i)
+    for (i = 0; i < SHANNON_N; ++i)
         c->R[i] = c->initR[i];
 }
 
@@ -188,7 +188,7 @@ shn_genkonst(shn_ctx *c) {
 
 static void
 shn_diffuse(shn_ctx *c) {
-    /* relies on FOLD == N! */
+    /* relies on FOLD == SHANNON_N! */
     DROUND(0);
     DROUND(1);
     DROUND(2);
@@ -240,14 +240,14 @@ shn_loadkey(shn_ctx *c, UCHAR key[], int keylen) {
     cycle(c);
 
     /* save a copy of the register */
-    for (i = 0; i < N; ++i)
+    for (i = 0; i < SHANNON_N; ++i)
         c->CRC[i] = c->R[i];
 
     /* now diffuse */
     shn_diffuse(c);
 
     /* now xor the copy back -- makes key loading irreversible */
-    for (i = 0; i < N; ++i)
+    for (i = 0; i < SHANNON_N; ++i)
         c->R[i] ^= c->CRC[i];
 }
 
@@ -293,7 +293,7 @@ shn_stream(shn_ctx *c, UCHAR *buf, int nbytes) {
     }
 
     /* do lots at a time, if there's enough to do */
-    while (nbytes >= N * 4) {
+    while (nbytes >= SHANNON_N * 4) {
         SROUND(0);
         SROUND(1);
         SROUND(2);
@@ -310,8 +310,8 @@ shn_stream(shn_ctx *c, UCHAR *buf, int nbytes) {
         SROUND(13);
         SROUND(14);
         SROUND(15);
-        buf += 4 * N;
-        nbytes -= N * 4;
+        buf += 4 * SHANNON_N;
+        nbytes -= SHANNON_N * 4;
     }
 
     /* do small or odd size buffers the slow way */
@@ -362,7 +362,7 @@ shn_maconly(shn_ctx *c, UCHAR *buf, int nbytes) {
     }
 
     /* do lots at a time, if there's enough to do */
-    while (4 * N <= nbytes) {
+    while (4 * SHANNON_N <= nbytes) {
         MROUND(0);
         MROUND(1);
         MROUND(2);
@@ -379,8 +379,8 @@ shn_maconly(shn_ctx *c, UCHAR *buf, int nbytes) {
         MROUND(13);
         MROUND(14);
         MROUND(15);
-        buf += 4 * N;
-        nbytes -= 4 * N;
+        buf += 4 * SHANNON_N;
+        nbytes -= 4 * SHANNON_N;
     }
 
     /* do small or odd size buffers the slow way */
@@ -437,7 +437,7 @@ shn_encrypt(shn_ctx *c, UCHAR *buf, int nbytes) {
     }
 
     /* do lots at a time, if there's enough to do */
-    while (4 * N <= nbytes) {
+    while (4 * SHANNON_N <= nbytes) {
         EROUND(0);
         EROUND(1);
         EROUND(2);
@@ -454,8 +454,8 @@ shn_encrypt(shn_ctx *c, UCHAR *buf, int nbytes) {
         EROUND(13);
         EROUND(14);
         EROUND(15);
-        buf += 4 * N;
-        nbytes -= 4 * N;
+        buf += 4 * SHANNON_N;
+        nbytes -= 4 * SHANNON_N;
     }
 
     /* do small or odd size buffers the slow way */
@@ -518,7 +518,7 @@ shn_decrypt(shn_ctx *c, UCHAR *buf, int nbytes) {
     }
 
     /* now do lots at a time, if there's enough */
-    while (4 * N <= nbytes) {
+    while (4 * SHANNON_N <= nbytes) {
         DROUND(0);
         DROUND(1);
         DROUND(2);
@@ -535,8 +535,8 @@ shn_decrypt(shn_ctx *c, UCHAR *buf, int nbytes) {
         DROUND(13);
         DROUND(14);
         DROUND(15);
-        buf += 4 * N;
-        nbytes -= 4 * N;
+        buf += 4 * SHANNON_N;
+        nbytes -= 4 * SHANNON_N;
     }
 
     /* do small or odd size buffers the slow way */
@@ -589,7 +589,7 @@ shn_finish(shn_ctx *c, UCHAR *buf, int nbytes) {
     c->nbuf = 0;
 
     /* now add the CRC to the stream register and diffuse it */
-    for (i = 0; i < N; ++i)
+    for (i = 0; i < SHANNON_N; ++i)
         c->R[i] ^= c->CRC[i];
     shn_diffuse(c);
 
