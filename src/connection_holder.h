@@ -15,6 +15,8 @@ public:
 
     Connection(const std::string &ap_addr, const std::string &ap_port);
 
+    ~Connection();
+
     void write_int(int data) const;
 
     void write(const uint8_t *data, size_t size) const;

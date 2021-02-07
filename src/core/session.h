@@ -51,7 +51,7 @@ private:
     //ScheduledExecutorService scheduler;
     std::atomic<bool> auth_lock;
     std::map<std::string, std::string> user_attributes;
-    std::unique_ptr<std::thread> receiver;
+    std::thread receiver;
     spotify::APWelcome ap_welcome;
     std::unique_ptr<MercuryClient> mercury_client;
     std::unique_ptr<AudioKeyManager> audio_key_manager;

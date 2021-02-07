@@ -49,7 +49,6 @@ void Zeroconf::listen(std::function<void(std::string &device_id, std::string &us
             auto info = get_info(utils::generate_device_id(), "librespot-c++", "",
                                  Base64::Encode(this->keys.get_public_key(), this->keys.get_public_key_length()),
                                  "AUTOMOBILE");
-            SPDLOG_DEBUG("{}", info);
             res.set_content(info, "application/json");
         } else if (action == "resetUsers") {
             SPDLOG_DEBUG("Received resetUsers on GET handler!");

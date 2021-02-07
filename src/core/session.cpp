@@ -5,6 +5,7 @@
 #include "session.h"
 #include "../version.h"
 #include "ap_resolver.h"
+#include "../crypto/hmac_sha_1.h"
 #include <utility>
 #include <vector>
 #include <cstdint>
@@ -12,8 +13,6 @@
 #include <memory>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
 #include <spdlog/spdlog.h>
 
 static constexpr uint8_t SERVER_KEY[] = {
@@ -38,7 +37,7 @@ Session::Session(std::shared_ptr<Connection> connection) : conn(std::move(connec
     this->running = false;
     this->auth_lock = false;
 
-    SPDLOG_INFO("Created new session! {{deviceId: {}}}", "nullptr", false);
+    SPDLOG_INFO("Created new session! deviceId: {}", utils::generate_device_id(), false);
 }
 
 void Session::connect() {
@@ -138,23 +137,21 @@ std::vector<uint8_t>
 Session::solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
                          utils::ByteArray &data) {
     auto shared_key = dh.compute_shared_key(response.challenge().login_crypto_challenge().diffie_hellman().gs());
-    HMAC_CTX *hmac_ctx = HMAC_CTX_new();
-    unsigned int tmp_len = EVP_MD_size(EVP_sha1());
-    std::vector<uint8_t> tmp(tmp_len);
+    HMAC_SHA1 hmac;
+    std::vector<uint8_t> tmp;
 
     for (uint8_t i = 1; i < 6; i++) {
-        HMAC_Init_ex(hmac_ctx, shared_key.data(), shared_key.size(), EVP_sha1(), nullptr);
-        HMAC_Update(hmac_ctx, acc.data(), acc.size());
-        HMAC_Update(hmac_ctx, &i, 1);
-        HMAC_Final(hmac_ctx, tmp.data(), &tmp_len);
+        hmac.init(shared_key);
+        hmac.update(acc);
+        hmac.update(&i, 1);
+        hmac.final(tmp);
         data.write(reinterpret_cast<const char *>(tmp.data()), tmp.size());
-        HMAC_CTX_reset(hmac_ctx);
     }
 
-    HMAC_Init_ex(hmac_ctx, data.data(), 20, EVP_sha1(), nullptr);
-    HMAC_Update(hmac_ctx, acc.data(), acc.size());
-    HMAC_Final(hmac_ctx, tmp.data(), &tmp_len);
-    HMAC_CTX_free(hmac_ctx);
+    std::vector<uint8_t> hmac_data(data.begin(), data.begin() + 20);
+    hmac.init(hmac_data);
+    hmac.update(acc);
+    hmac.final(tmp);
     return tmp;
 }
 
@@ -229,45 +226,50 @@ void session_packet_receiver(Session *session) {
 
         switch (packet.cmd) {
             case Packet::Type::Ping: {
-
+                SPDLOG_DEBUG("Handling Ping!");
                 break;
             }
             case Packet::Type::PongAck: {
+                SPDLOG_DEBUG("Handling PongAck!");
                 // Silent
                 break;
             }
             case Packet::Type::CountryCode: {
+                SPDLOG_DEBUG("Handling CountryCode!");
                 std::string country_code(packet.payload.begin(), packet.payload.end());
-                std::cout << "Received CountryCode: " << country_code << std::endl;
+                SPDLOG_DEBUG("Received CountryCode: {}", country_code);
                 break;
             }
             case Packet::Type::LicenseVersion: {
-
+                SPDLOG_DEBUG("Handling LicenseVersion!");
                 break;
             }
             case Packet::Type::Unknown_0x10: {
-                std::cout << "Received 0x10" << std::endl;
+                SPDLOG_DEBUG("Handling Unknown_0x10");
                 break;
             }
             case Packet::Type::MercurySub:
             case Packet::Type::MercuryUnsub:
             case Packet::Type::MercuryEvent:
             case Packet::Type::MercuryReq: {
+                SPDLOG_DEBUG("Handling MercuryX!");
                 session->mercury()->dispatch(packet);
                 break;
             }
             case Packet::Type::AesKey:
             case Packet::Type::AesKeyError: {
+                SPDLOG_DEBUG("Handling AesKey / AesKeyError!");
                 session->audio_key()->dispatch(packet);
                 break;
             }
             case Packet::Type::ChannelError:
             case Packet::Type::StreamChunkRes: {
+                SPDLOG_DEBUG("Handling ChannelError / StreamChunkRes!");
                 session->channel()->dispatch(packet);
                 break;
             }
             default: {
-                std::cout << "Skipping 0x" << std::hex << packet.cmd << std::endl;
+                SPDLOG_DEBUG("Skipping 0x{0:x}", packet.cmd);
                 break;
             }
         }
@@ -296,9 +298,10 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
         SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
 
-        receiver = std::make_unique<std::thread>(session_packet_receiver, this);
+        running = true;
+        receiver = std::thread(session_packet_receiver, this);
 
-        std::vector<uint8_t> bytes0x0f(20);
+        /*std::vector<uint8_t> bytes0x0f(20);
         RAND_bytes(bytes0x0f.data(), bytes0x0f.size());
         send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f);
 
@@ -316,7 +319,7 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
             // TODO: Synchronize with auth_lock
             auth_lock = false;
             // TODO: Notify all auth_lock
-        }
+        }*/
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;
@@ -383,5 +386,5 @@ const std::unique_ptr<ChannelManager> &Session::channel() const {
 
 Session::~Session() {
     running = false;
-    if (receiver != nullptr) receiver->join();
+    receiver.join();
 }

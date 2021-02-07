@@ -19,6 +19,10 @@ Connection::Connection(const std::string &ap_addr, const std::string &ap_port) {
     init(ap_addr, ap_port);
 }
 
+Connection::~Connection() {
+    close(sockfd);
+}
+
 void Connection::init(const std::string &ap_addr, const std::string &ap_port) {
     SPDLOG_INFO("Connecting to {}:{}", ap_addr, ap_port);
 
@@ -74,30 +78,19 @@ void Connection::write(const uint8_t *data, size_t size) const {
 }
 
 void Connection::write_int(int data) const {
-    write_byte((data >> 24) & 0xFF);
-    write_byte((data >> 16) & 0xFF);
-    write_byte((data >> 8) & 0xFF);
-    write_byte((data >> 0) & 0xFF);
+    data = htonl(data);
+    write(reinterpret_cast<const uint8_t *>(&data), sizeof(data));
 }
 
 int Connection::read_int() const {
     int ret;
-    uint8_t tmp;
-    int data = 0;
+    int data;
 
-    ret = ::read(sockfd, &tmp, 1);
-    data |= tmp << 24;
-    ret += ::read(sockfd, &tmp, 1);
-    data |= tmp << 16;
-    ret += ::read(sockfd, &tmp, 1);
-    data |= tmp << 8;
-    ret += ::read(sockfd, &tmp, 1);
-    data |= tmp << 0;
-
-    if (ret != 4)
+    ret = ::read(sockfd, &data, sizeof(data));
+    if (ret != sizeof(data))
         throw std::runtime_error("Failed to read data!");
 
-    return data;
+    return ntohl(data);
 }
 
 std::vector<uint8_t> Connection::read_fully(size_t size) const {
@@ -134,7 +127,7 @@ void Connection::set_timeout(int timeout) {
     new_timeout.tv_sec = timeout;
 
     size_t original_timeout_size = sizeof(original_timeout);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &original_timeout, (socklen_t *) &original_timeout_size) >= 0)
+    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &original_timeout, (socklen_t *) &original_timeout_size) >= 0)
         original_timeout_set = true;
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &new_timeout, sizeof(new_timeout)) < 0)
