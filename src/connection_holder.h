@@ -23,7 +23,7 @@ public:
 
     void write(const std::string &data) const;
 
-    void write_byte(uint8_t data) const;
+    void write(uint8_t data) const;
 
     int read_int() const;
 

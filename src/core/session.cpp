@@ -3,12 +3,11 @@
 //
 
 #include "session.h"
-#include "../version.h"
 #include "ap_resolver.h"
+#include "../utils/byte_array.h"
+#include "../utils/byte_buffer.h"
 #include "../crypto/hmac_sha_1.h"
 #include "../time_provider.h"
-#include "../utils/byte_buffer.h"
-#include <utility>
 #include <vector>
 #include <cstdint>
 #include <iostream>
@@ -36,8 +35,7 @@ static constexpr uint8_t SERVER_KEY[] = {
         0x19, 0xe6, 0x55, 0xbd
 };
 
-Session::Session(std::shared_ptr<Connection> connection) :
-        conn(std::move(connection)),
+Session::Session(const std::string& accesspoint) : conn(Connection(accesspoint)),
         // Ping is every two minutes. Give a 5 second margin before triggering a reconnection.
         scheduled_reconnect(DelayedTask(std::chrono::seconds(120 + 5), [this] {
             SPDLOG_WARN("Socket timed out. Reconnecting...");
@@ -56,9 +54,9 @@ void Session::connect() {
     send_client_hello(acc, dh);
 
     // Read ClientHello response
-    int length = conn->read_int();
-    auto buffer = conn->read_fully(length - 4);
-    acc.write_int(length);
+    int length = conn.read_int();
+    auto buffer = conn.read_fully(length - 4);
+    acc.write_int(htonl(length));
     acc.write(buffer);
 
     // Read APResponseMessage
@@ -82,7 +80,7 @@ void Session::connect() {
 }
 
 void Session::reconnect() {
-
+    SPDLOG_ERROR("Oopsie doopsie, reconnect hasn't been implemented yet!");
 }
 
 void Session::send_client_hello(ByteArray &acc, DiffieHellman &dh) {
@@ -103,14 +101,14 @@ void Session::send_client_hello(ByteArray &acc, DiffieHellman &dh) {
 
     auto client_hello_string = client_hello.SerializeAsString();
     unsigned int length = 1 + 1 + 4 + (unsigned int) client_hello_string.size();
-    conn->write_byte(0);
-    conn->write_byte(4);
-    conn->write_int(length);
-    conn->write(client_hello_string);
+    conn.write(0);
+    conn.write(4);
+    conn.write_int(length);
+    conn.write(client_hello_string);
 
-    acc.write_byte(0);
-    acc.write_byte(4);
-    acc.write_int(length);
+    acc.write(0);
+    acc.write(4);
+    acc.write_int(htonl(length));
     acc.write(client_hello_string);
 }
 
@@ -177,18 +175,18 @@ void Session::send_challenge_response(std::vector<uint8_t> &challenge) {
 
     auto client_response_plaintext_string = client_response_plaintext.SerializeAsString();
     unsigned int length = 4 + (unsigned int) client_response_plaintext_string.size();
-    conn->write_int(length);
-    conn->write(client_response_plaintext_string);
+    conn.write_int(length);
+    conn.write(client_response_plaintext_string);
 }
 
 void Session::read_connection_status() {
-    conn->set_timeout(1);
-    auto scrap = conn->read(4);
-    conn->restore_timeout();
+    conn.set_timeout(1);
+    auto scrap = conn.read(4);
+    conn.restore_timeout();
     if (scrap.size() == 4) {
         // TODO: Handle error
         unsigned int length = (scrap[0] << 24) | (scrap[1] << 16) | (scrap[2] << 8) | (scrap[3] << 0);
-        auto payload = conn->read_fully(length - 4);
+        auto payload = conn.read_fully(length - 4);
         spotify::APResponseMessage ap_error_message;
         ap_error_message.ParseFromArray(payload.data(), payload.size());
         SPDLOG_ERROR("Connection failed! Error code: {}!", ap_error_message.login_failed().error_code());
@@ -201,36 +199,8 @@ void Session::read_connection_status() {
     }
 }
 
-void Session::authenticate(spotify::LoginCredentials &credentials) {
-    authenticate_partial(credentials, false);
-
-    // TODO: synchronized (auth_lock) {
-    mercury_client = std::make_unique<MercuryClient>();
-    //token_provider = std::make_unique<TokenProvider>();
-    audio_key_manager = std::make_unique<AudioKeyManager>();
-    channel_manager = std::make_unique<ChannelManager>();
-    //api = std::make_unique<ApiClient>();
-    //cdn_manager = std::make_unique<CdnManager>();
-    //content_feeder = std::make_unique<PlayableContentFeeder>();
-    //cache_manager = std::make_unique<CacheManager>();
-    dealer = std::make_unique<DealerClient>(this);
-    //search = std::make_unique<SearchManager>();
-    event_service = std::make_unique<EventService>();
-
-    auth_lock = false;
-    // TODO: auth_lock.notifyAll();
-    // TODO: End synchronized
-
-    event_service->language("en");
-    //TimeProvider::init();
-    //dealer.connect();
-
-    //mercury().interested_in("spotify::user::attributes::update", listener?);
-    //dealer().addMessageListener(listener?, "hm://connect-state/v1/connect/logout");
-}
-
 void Session::packet_receiver() {
-    std::cout << "Session::session_packet_receiver started" << std::endl;
+    SPDLOG_DEBUG("Session packet receiver started!");
 
     while (running) {
         Packet packet = cipher_pair->receive_encoded();
@@ -302,10 +272,10 @@ void Session::packet_receiver() {
         }
     }
 
-    std::cout << "Session::session_packet_receiver stopped" << std::endl;
+    SPDLOG_DEBUG("Session packet receiver ended!");
 }
 
-void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock) {
+void Session::authenticate(spotify::LoginCredentials &credentials) {
     if (cipher_pair == nullptr) {
         // TODO: Handle error
         SPDLOG_ERROR("Connection not established!");
@@ -324,29 +294,6 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     if (packet.cmd == Packet::Type::APWelcome) {
         ap_welcome.ParseFromArray(packet.payload.data(), packet.payload.size());
         SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
-
-        running = true;
-        receiver = std::thread(&Session::packet_receiver, this);
-
-        /*std::vector<uint8_t> bytes0x0f(20);
-        RAND_bytes(bytes0x0f.data(), bytes0x0f.size());
-        send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f);
-
-        ByteArray preferred_locale;
-        preferred_locale.write_byte(0x00);
-        preferred_locale.write_byte(0x00);
-        preferred_locale.write_byte(0x10);
-        preferred_locale.write_byte(0x00);
-        preferred_locale.write_byte(0x02);
-        preferred_locale.write("preferred-locale");
-        preferred_locale.write("en"); // TODO: Fix this with some sort of config :)
-        send_unchecked(Packet::Type::PreferredLocale, preferred_locale);
-
-        if (remove_lock) {
-            // TODO: Synchronize with auth_lock
-            auth_lock = false;
-            // TODO: Notify all auth_lock
-        }*/
     } else if (packet.cmd == Packet::Type::AuthFailure) {
         // TODO: Handle error
         spotify::APLoginFailed login_failed;
@@ -356,6 +303,29 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
     } else {
         SPDLOG_WARN("Unknown command received! cmd: {0:x}", packet.cmd);
     }
+}
+
+void Session::start() {
+
+    /*std::vector<uint8_t> bytes0x0f(20);
+    RAND_bytes(bytes0x0f.data(), bytes0x0f.size());
+    send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f);
+
+    ByteArray preferred_locale;
+    preferred_locale.write_byte(0x00);
+    preferred_locale.write_byte(0x00);
+    preferred_locale.write_byte(0x10);
+    preferred_locale.write(0x00);
+    preferred_locale.write(0x02);
+    preferred_locale.write("preferred-locale");
+    preferred_locale.write("en"); // TODO: Fix this with some sort of config :)
+    send_unchecked(Packet::Type::PreferredLocale, preferred_locale);
+    */
+
+    running = true;
+    mercury_client = std::make_unique<MercuryClient>();
+    receiver = std::thread(&Session::packet_receiver, this);
+    //mercury_client->interested_in("spotify:user:attributes:update", nullptr);
 }
 
 void Session::send_unchecked(Packet::Type cmd, std::vector<uint8_t> &payload) {
@@ -368,7 +338,7 @@ void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
 }
 
 void Session::send(Packet::Type cmd, std::vector<uint8_t> &payload) {
-    if (/*closing || */conn == nullptr) {
+    if (false/*closing || conn == nullptr*/) {
         SPDLOG_DEBUG("Connection was broken while closing.");
         return;
     }

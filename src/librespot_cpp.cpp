@@ -16,8 +16,7 @@ void LibrespotCpp::start() {
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %s:%# - %v");
     SPDLOG_INFO("Welcome to librespot-c++!");
 
-    auto connection = std::make_shared<Connection>(APResolver::get_instance().get_accesspoint());
-    Session session(connection);
+    Session session(APResolver::get_instance().get_accesspoint());
     session.connect();
 
     Zeroconf zeroconf;
@@ -26,6 +25,7 @@ void LibrespotCpp::start() {
         SPDLOG_INFO("Zeroconf callback called!");
         auto credentials = decode_auth_blob(device_id, username, payload);
         session.authenticate(credentials);
+        session.start();
     });
 
     SPDLOG_INFO("Outside! :)");

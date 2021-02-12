@@ -17,6 +17,10 @@ static std::map<std::string, Packet::Type> METHOD_TYPE = {
         {"UNSUB", Packet::Type::MercuryUnsub},
 };
 
+MercuryClient::MercuryClient() {
+
+}
+
 void MercuryClient::subscribe(std::string &uri, SubListener *listener) {
     RawMercuryRequest request = RawMercuryRequest::sub(uri);
     MercuryResponse response = send_sync(request);
@@ -114,17 +118,17 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
     SPDLOG_TRACE("Send Mercury request, seq: {}, uri: {}, method: {}", seq, request.header.uri(),
                  request.header.method());
 
-    out.write_short(4); // Sequence size
-    out.write_int(seq); // Sequence id
-    out.write_byte(1); // Flags
-    out.write_short(1 + request.payload.size()); // Parts count
+    out.write_short(htons(4)); // Sequence size
+    out.write_int(htonl(seq)); // Sequence id
+    out.write(1); // Flags
+    out.write_short(htons(1 + request.payload.size())); // Parts count
 
     auto header = request.header.SerializeAsString();
-    out.write_short(header.size()); // Header size
+    out.write_short(htons(header.size())); // Header size
     out.write(header); // Header
 
     for (const auto &part : request.payload) { // Parts
-        out.write_short(part.size());
+        out.write_short(htons(part.size()));
         out.write(part);
     }
 
@@ -140,7 +144,7 @@ void MercuryClient::dispatch(Packet &packet) {
     ByteBuffer payload(packet.payload);
 
     int seq_length = ntohs(payload.get_short());
-    long seq;
+    unsigned long seq;
     if (seq_length == 2) seq = ntohs(payload.get_short());
     else if (seq_length == 4) seq = ntohl(payload.get_int());
     else if (seq_length == 8) seq = ntohll(payload.get_long());
@@ -157,7 +161,7 @@ void MercuryClient::dispatch(Packet &packet) {
         partial = partials[seq];
     }
 
-    SPDLOG_TRACE("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
+    SPDLOG_DEBUG("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
 
     for (int i = 0; i < parts; i++) {
         short size = ntohs(payload.get_short());
@@ -194,7 +198,7 @@ void MercuryClient::dispatch(Packet &packet) {
     }
 }
 
-void MercuryClient::interested_in(std::string &uri, SubListener *listener) {
+void MercuryClient::interested_in(const std::string &uri, SubListener *listener) {
     subscriptions.emplace_back(uri, listener, false);
 }
 
@@ -231,5 +235,5 @@ MercuryResponse MercuryClient::SyncCallback::waitResponse() {
 
 MercuryResponse::MercuryResponse(spotify::Header &header, std::shared_ptr<std::vector<std::vector<uint8_t>>> payload) :
         uri(header.uri()), status_code(header.status_code()), payload(std::move(payload)) {
-    payload->erase(payload->begin()); // Remove first element
+    this->payload->erase(this->payload->begin()); // Remove first element
 }

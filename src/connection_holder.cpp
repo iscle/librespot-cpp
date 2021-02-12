@@ -57,7 +57,7 @@ void Connection::init(const std::string &ap_addr, const std::string &ap_port) {
     this->sockfd = sockfd;
 }
 
-void Connection::write_byte(uint8_t data) const {
+void Connection::write(uint8_t data) const {
     if (::write(sockfd, &data, 1) != 1)
         throw std::runtime_error("Failed to write data!");
 }

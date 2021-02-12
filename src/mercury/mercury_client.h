@@ -9,7 +9,6 @@
 #include <list>
 #include "../crypto/packet.h"
 #include "raw_mercury_request.h"
-//#include "../core/session.h"
 
 class MercuryResponse {
 public:
@@ -57,6 +56,8 @@ public:
         MercuryResponse waitResponse();
     };
 
+    MercuryClient();
+
     void subscribe(std::string &uri, SubListener *listener);
 
     void unsubscribe(std::string &uri);
@@ -67,16 +68,16 @@ public:
 
     void dispatch(Packet &packet);
 
-    void interested_in(std::string &uri, SubListener *listener);
+    void interested_in(const std::string &uri, SubListener *listener);
 
     void not_interested(SubListener *listener);
 
 private:
     static constexpr int MERCURY_REQUEST_TIMEOUT = 3000;
     std::atomic<int> seq_holder;
-    std::map<long, Callback *> callbacks;
+    std::map<unsigned long, Callback *> callbacks;
     std::list<InternalSubListener> subscriptions;
-    std::map<long, std::shared_ptr<std::vector<std::vector<uint8_t>>>> partials;
+    std::map<unsigned long, std::shared_ptr<std::vector<std::vector<uint8_t>>>> partials;
     //Session *session;
 
     void event(MercuryResponse &resp);

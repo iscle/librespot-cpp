@@ -23,7 +23,7 @@
 
 class Session {
 public:
-    explicit Session(std::shared_ptr<Connection> connection);
+    explicit Session(const std::string& accesspoint);
 
     ~Session();
 
@@ -41,6 +41,9 @@ public:
 
     std::string country_code;
     bool running;
+
+    void start();
+
 private:
     class Configuration {
 
@@ -67,10 +70,8 @@ private:
     volatile bool closed;
     volatile bool closing;
     DelayedTask scheduled_reconnect;
-    const std::shared_ptr<Connection> conn;
+    Connection conn;
     std::unique_ptr<CipherPair> cipher_pair;
-
-    void authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock);
 
     void send_unchecked(Packet::Type cmd, std::vector<uint8_t> &payload);
 
@@ -91,6 +92,7 @@ private:
     void packet_receiver();
 
     void reconnect();
+
 };
 
 #endif //LIBRESPOT_C_SESSION_H

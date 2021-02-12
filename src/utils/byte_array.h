@@ -13,7 +13,7 @@ class ByteArray : public std::vector<uint8_t> {
 public:
     void write_int(int data);
 
-    void write_byte(uint8_t data);
+    void write(uint8_t data);
 
     void write(const std::string &data);
 
@@ -23,7 +23,6 @@ public:
 
     void write(const std::vector<uint8_t> &data);
 };
-
 
 
 #endif //LIBRESPOT_CPP_BYTE_ARRAY_H

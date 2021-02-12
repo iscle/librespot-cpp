@@ -14,6 +14,7 @@ public:
     DelayedTask(std::chrono::seconds interval, std::function<void()> callback);
 
     void reset();
+
     void cancel();
 
 private:

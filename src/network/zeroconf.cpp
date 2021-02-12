@@ -38,7 +38,8 @@ Zeroconf::~Zeroconf() {
     server_thread.join();
 }
 
-void Zeroconf::listen(std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> &callback) {
+void Zeroconf::listen(
+        std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> &callback) {
     SPDLOG_INFO("Starting zeroconf server at port {}", listen_port);
 
     svr.Get("/", [&](const httplib::Request &req, httplib::Response &res) {
@@ -168,11 +169,11 @@ static void create_services(AvahiClient *c, Zeroconf *instance) {
 
     if (avahi_entry_group_is_empty(instance->group)) {
         int ret = avahi_entry_group_add_service(instance->group,
-                                            AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
-                                            static_cast<AvahiPublishFlags>(0),
-                                            "spotify-connect","_spotify-connect._tcp",
-                                            nullptr, nullptr, instance->listen_port,
-                                            "CPath=/", "VERSION=1.0", "Stack=SP", nullptr);
+                                                AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
+                                                static_cast<AvahiPublishFlags>(0),
+                                                "spotify-connect", "_spotify-connect._tcp",
+                                                nullptr, nullptr, instance->listen_port,
+                                                "CPath=/", "VERSION=1.0", "Stack=SP", nullptr);
         if (ret < 0) {
             SPDLOG_ERROR("Failed to add _spotify-connect._tcp service: {}", avahi_strerror(ret));
             avahi_simple_poll_quit(instance->simple_poll);
@@ -231,7 +232,8 @@ void Zeroconf::register_avahi() {
     });
 }
 
-void Zeroconf::start(std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> callback) {
+void Zeroconf::start(
+        std::function<void(std::string &device_id, std::string &username, std::vector<uint8_t> &payload)> callback) {
     listen(callback);
     register_avahi();
 }

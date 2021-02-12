@@ -14,7 +14,7 @@
 
 class CipherPair {
 public:
-    CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size, uint8_t *recv_key,
+    CipherPair(Connection &connection, uint8_t *send_key, size_t send_key_size, uint8_t *recv_key,
                size_t recv_key_size);
 
     void send_encoded(uint8_t cmd, std::vector<uint8_t> &payload);
@@ -22,7 +22,7 @@ public:
     Packet receive_encoded();
 
 private:
-    const std::shared_ptr<Connection> connection;
+    const Connection &connection;
     std::mutex send_mutex;
     std::mutex recv_mutex;
     shn_ctx send_cipher_ctx;

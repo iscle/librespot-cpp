@@ -15,25 +15,25 @@ ByteBuffer::ByteBuffer(std::string &string) :
 }
 
 uint8_t ByteBuffer::get() {
-    uint8_t data = *(uint8_t *) &vector[pos];
+    uint8_t data = *reinterpret_cast<uint8_t *>(&vector[pos]);
     pos += 1;
     return data;
 }
 
 short ByteBuffer::get_short() {
-    short data = *(short *) &vector[pos];
+    short data = *reinterpret_cast<short *>(&vector[pos]);
     pos += 2;
     return data;
 }
 
 int ByteBuffer::get_int() {
-    int data = *(int *) &vector[pos];
+    int data = *reinterpret_cast<int *>(&vector[pos]);
     pos += 4;
     return data;
 }
 
 long ByteBuffer::get_long() {
-    long data = *(long *) &vector[pos];
+    long data = *reinterpret_cast<long *>(&vector[pos]);
     pos += 8;
     return data;
 }

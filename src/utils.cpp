@@ -3,17 +3,13 @@
 //
 
 #include "utils.h"
-#include "version.h"
 #include "crypto/aes.h"
 #include "crypto/pbkdf_2.h"
 #include "crypto/base_64.h"
 #include "crypto/sha_1.h"
 #include "utils/byte_array.h"
-#include <sys/socket.h>
 #include <iostream>
-#include <unistd.h>
 #include <netdb.h>
-#include <memory>
 
 std::string generate_device_id() {
     return "209031ee9cc724ce46a6c4bf9140c70c4a9202c8";
@@ -32,7 +28,8 @@ int read_blob_int(ByteBuffer &buffer) {
     return hi << 7 | (lo & 0x7f);
 }
 
-spotify::LoginCredentials decode_auth_blob(std::string &device_id, std::string &username, std::vector<uint8_t> &payload) {
+spotify::LoginCredentials
+decode_auth_blob(std::string &device_id, std::string &username, std::vector<uint8_t> &payload) {
     auto encrypted_blob = Base64::Decode(payload);
 
     class SHA1 sha;
@@ -50,7 +47,7 @@ spotify::LoginCredentials decode_auth_blob(std::string &device_id, std::string &
     std::vector<uint8_t> tmp;
     sha.final(tmp);
     key_ba.write(tmp);
-    key_ba.write_int(20);
+    key_ba.write_int(htonl(20));
 
     AES aes(AES::Type::AES_192_ECB);
     aes.init(key_ba);
@@ -89,7 +86,7 @@ spotify::LoginCredentials decode_auth_blob(std::string &device_id, std::string &
 
 uint64_t htonll(uint64_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-    return bswap_64 (x);
+    return bswap_64(x);
 #else
     return x;
 #endif
