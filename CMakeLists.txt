@@ -45,7 +45,11 @@ add_executable(librespot_cpp
         src/crypto/sha_1.cpp src/crypto/sha_1.h
         src/crypto/aes.cpp src/crypto/aes.h
         src/crypto/hmac_sha_1.cpp src/crypto/hmac_sha_1.h
-        src/audio/decrypt/aes_audio_decrypt.cpp src/audio/decrypt/aes_audio_decrypt.h)
+        src/audio/decrypt/aes_audio_decrypt.cpp src/audio/decrypt/aes_audio_decrypt.h
+        src/delayed_task.cpp src/delayed_task.h
+        src/time_provider.cpp src/time_provider.h
+        src/utils/byte_buffer.cpp src/utils/byte_buffer.h
+        src/utils/byte_array.cpp src/utils/byte_array.h)
 
 # OpenSSL
 find_package(PkgConfig REQUIRED)

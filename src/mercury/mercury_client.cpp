@@ -7,8 +7,10 @@
 #include <proto/pubsub.pb.h>
 #include <proto/mercury.pb.h>
 #include <spdlog/spdlog.h>
+#include <netdb.h>
 #include "mercury_client.h"
 #include "../utils.h"
+#include "../utils/byte_array.h"
 
 static std::map<std::string, Packet::Type> METHOD_TYPE = {
         {"SUB",   Packet::Type::MercurySub},
@@ -101,7 +103,7 @@ MercuryResponse MercuryClient::send_sync(RawMercuryRequest &request) {
  */
 
 int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *callback) {
-    utils::ByteArray out;
+    ByteArray out;
 
     int seq;
     // TODO: synchronized (seqHolder) {
@@ -135,17 +137,17 @@ int MercuryClient::send(RawMercuryRequest &request, MercuryClient::Callback *cal
 }
 
 void MercuryClient::dispatch(Packet &packet) {
-    utils::ByteBuffer payload(packet.payload);
+    ByteBuffer payload(packet.payload);
 
-    int seq_length = payload.get_short();
+    int seq_length = ntohs(payload.get_short());
     long seq;
-    if (seq_length == 2) seq = payload.get_short();
-    else if (seq_length == 4) seq = payload.get_int();
-    else if (seq_length == 8) seq = payload.get_long();
+    if (seq_length == 2) seq = ntohs(payload.get_short());
+    else if (seq_length == 4) seq = ntohl(payload.get_int());
+    else if (seq_length == 8) seq = ntohll(payload.get_long());
     else throw std::runtime_error("Unknown seq length: " + std::to_string(seq_length));
 
     uint8_t flags = payload.get();
-    short parts = payload.get_short();
+    short parts = ntohs(payload.get_short());
 
     std::shared_ptr<std::vector<std::vector<uint8_t>>> partial;
     if (partials.find(seq) == partials.end() || flags == 0) {
@@ -158,7 +160,7 @@ void MercuryClient::dispatch(Packet &packet) {
     SPDLOG_TRACE("Handling packet, cmd: {}, seq: {}, flags: {}, parts: {}", packet.cmd, seq, flags, parts);
 
     for (int i = 0; i < parts; i++) {
-        short size = payload.get_short();
+        short size = ntohs(payload.get_short());
         auto buffer = payload.get(size);
         partial->emplace_back(buffer);
     }

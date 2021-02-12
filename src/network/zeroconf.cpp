@@ -46,7 +46,7 @@ void Zeroconf::listen(std::function<void(std::string &device_id, std::string &us
         if (action == "getInfo") {
             SPDLOG_DEBUG("getInfo requested from {}:{}", req.remote_addr, req.remote_port);
 
-            auto info = get_info(utils::generate_device_id(), "librespot-c++", "",
+            auto info = get_info(generate_device_id(), "librespot-c++", "",
                                  Base64::Encode(this->keys.get_public_key(), this->keys.get_public_key_length()),
                                  "AUTOMOBILE");
             res.set_content(info, "application/json");
@@ -59,7 +59,7 @@ void Zeroconf::listen(std::function<void(std::string &device_id, std::string &us
         if (action == "addUser") {
             SPDLOG_DEBUG("addUser requested from {}:{}", req.remote_addr, req.remote_port);
 
-            auto device_id = utils::generate_device_id();
+            auto device_id = generate_device_id();
             auto blob = Base64::Decode(req.get_param_value("blob"));
             auto shared_key = keys.compute_shared_key(Base64::Decode(req.get_param_value("clientKey")));
             auto device_name = req.get_param_value("deviceName");
@@ -252,11 +252,11 @@ Zeroconf::get_info(std::string device_id, std::string remote_name, std::string a
     info->AddMember("statusString", "OK", allocator);
     info->AddMember("spotifyError", 0, allocator);
     info->AddMember("version", "2.7.1", allocator);
-    info->AddMember("deviceID", utils::json_string(device_id, allocator), allocator);
-    info->AddMember("remoteName", utils::json_string(remote_name, allocator), allocator);
-    info->AddMember("activeUser", utils::json_string(active_user, allocator), allocator);
-    info->AddMember("publicKey", utils::json_string(public_key, allocator), allocator);
-    info->AddMember("deviceType", utils::json_string(device_type, allocator), allocator);
+    info->AddMember("deviceID", json_string(device_id, allocator), allocator);
+    info->AddMember("remoteName", json_string(remote_name, allocator), allocator);
+    info->AddMember("activeUser", json_string(active_user, allocator), allocator);
+    info->AddMember("publicKey", json_string(public_key, allocator), allocator);
+    info->AddMember("deviceType", json_string(device_type, allocator), allocator);
     info->AddMember("libraryVersion", "?.?.?", allocator); // TODO: Fix this value!
     info->AddMember("accountReq", "PREMIUM", allocator);
     info->AddMember("brandDisplayName", "librespot-org", allocator);

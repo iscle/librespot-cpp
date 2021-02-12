@@ -6,6 +6,8 @@
 #include "../version.h"
 #include "ap_resolver.h"
 #include "../crypto/hmac_sha_1.h"
+#include "../time_provider.h"
+#include "../utils/byte_buffer.h"
 #include <utility>
 #include <vector>
 #include <cstdint>
@@ -14,6 +16,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <spdlog/spdlog.h>
+#include <netdb.h>
 
 static constexpr uint8_t SERVER_KEY[] = {
         0xac, 0xe0, 0x46, 0x0b, 0xff, 0xc2, 0x30, 0xaf, 0xf4, 0x6b, 0xfe, 0xc3, 0xbf, 0xbf, 0x86, 0x3d, 0xa1, 0x91,
@@ -33,15 +36,21 @@ static constexpr uint8_t SERVER_KEY[] = {
         0x19, 0xe6, 0x55, 0xbd
 };
 
-Session::Session(std::shared_ptr<Connection> connection) : conn(std::move(connection)) {
+Session::Session(std::shared_ptr<Connection> connection) :
+        conn(std::move(connection)),
+        // Ping is every two minutes. Give a 5 second margin before triggering a reconnection.
+        scheduled_reconnect(DelayedTask(std::chrono::seconds(120 + 5), [this] {
+            SPDLOG_WARN("Socket timed out. Reconnecting...");
+            reconnect();
+        })) {
     this->running = false;
     this->auth_lock = false;
 
-    SPDLOG_INFO("Created new session! deviceId: {}", utils::generate_device_id(), false);
+    SPDLOG_INFO("Created new session! deviceId: {}", generate_device_id(), false);
 }
 
 void Session::connect() {
-    utils::ByteArray acc;
+    ByteArray acc;
     DiffieHellman dh;
 
     send_client_hello(acc, dh);
@@ -58,7 +67,7 @@ void Session::connect() {
 
     check_gs_signature(ap_response_message);
 
-    utils::ByteArray challenge_data;
+    ByteArray challenge_data;
     auto challenge = solve_challenge(acc, dh, ap_response_message, challenge_data);
     send_challenge_response(challenge);
 
@@ -72,7 +81,11 @@ void Session::connect() {
     SPDLOG_INFO("Connected successfully!");
 }
 
-void Session::send_client_hello(utils::ByteArray &acc, DiffieHellman &dh) {
+void Session::reconnect() {
+
+}
+
+void Session::send_client_hello(ByteArray &acc, DiffieHellman &dh) {
     spotify::ClientHello client_hello;
     uint8_t nonce[16];
     uint8_t padding[] = {0x1E};
@@ -134,8 +147,8 @@ void Session::check_gs_signature(spotify::APResponseMessage &response) {
 }
 
 std::vector<uint8_t>
-Session::solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
-                         utils::ByteArray &data) {
+Session::solve_challenge(ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
+                         ByteArray &data) {
     auto shared_key = dh.compute_shared_key(response.challenge().login_crypto_challenge().diffie_hellman().gs());
     HMAC_SHA1 hmac;
     std::vector<uint8_t> tmp;
@@ -216,17 +229,24 @@ void Session::authenticate(spotify::LoginCredentials &credentials) {
     //dealer().addMessageListener(listener?, "hm://connect-state/v1/connect/logout");
 }
 
-void session_packet_receiver(Session *session) {
+void Session::packet_receiver() {
     std::cout << "Session::session_packet_receiver started" << std::endl;
 
-    while (session->running) {
-        Packet packet = session->cipher_pair->receive_encoded();
+    while (running) {
+        Packet packet = cipher_pair->receive_encoded();
 
-        if (!session->running) break;
+        if (!running) break;
 
         switch (packet.cmd) {
             case Packet::Type::Ping: {
                 SPDLOG_DEBUG("Handling Ping!");
+                scheduled_reconnect.reset();
+
+                // Get and update timestamp
+                ByteBuffer bb(packet.payload);
+                TimeProvider::get_instance().update(ntohl(bb.get_int()) * 1000UL);
+
+                send(Packet::Type::Pong, packet.payload);
                 break;
             }
             case Packet::Type::PongAck: {
@@ -236,36 +256,43 @@ void session_packet_receiver(Session *session) {
             }
             case Packet::Type::CountryCode: {
                 SPDLOG_DEBUG("Handling CountryCode!");
-                std::string country_code(packet.payload.begin(), packet.payload.end());
+                country_code = std::string(packet.payload.begin(), packet.payload.end());
                 SPDLOG_DEBUG("Received CountryCode: {}", country_code);
                 break;
             }
             case Packet::Type::LicenseVersion: {
                 SPDLOG_DEBUG("Handling LicenseVersion!");
+                // Unused
                 break;
             }
             case Packet::Type::Unknown_0x10: {
                 SPDLOG_DEBUG("Handling Unknown_0x10");
+                // Unused
                 break;
             }
             case Packet::Type::MercurySub:
             case Packet::Type::MercuryUnsub:
             case Packet::Type::MercuryEvent:
             case Packet::Type::MercuryReq: {
-                SPDLOG_DEBUG("Handling MercuryX!");
-                session->mercury()->dispatch(packet);
+                SPDLOG_DEBUG("Handling Mercury packet!");
+                mercury()->dispatch(packet);
                 break;
             }
             case Packet::Type::AesKey:
             case Packet::Type::AesKeyError: {
-                SPDLOG_DEBUG("Handling AesKey / AesKeyError!");
-                session->audio_key()->dispatch(packet);
+                SPDLOG_DEBUG("Handling Aes packet!");
+                //audio_key()->dispatch(packet);
                 break;
             }
             case Packet::Type::ChannelError:
             case Packet::Type::StreamChunkRes: {
-                SPDLOG_DEBUG("Handling ChannelError / StreamChunkRes!");
-                session->channel()->dispatch(packet);
+                SPDLOG_DEBUG("Handling Channel packet!");
+                //channel()->dispatch(packet);
+                break;
+            }
+            case Packet::Type::ProductInfo: {
+                SPDLOG_DEBUG("Handling ProductInfo!");
+                SPDLOG_DEBUG("{}", std::string(packet.payload.begin(), packet.payload.end()));
                 break;
             }
             default: {
@@ -299,13 +326,13 @@ void Session::authenticate_partial(spotify::LoginCredentials &credentials, bool 
         SPDLOG_INFO("Authenticated as {}!", ap_welcome.canonical_username());
 
         running = true;
-        receiver = std::thread(session_packet_receiver, this);
+        receiver = std::thread(&Session::packet_receiver, this);
 
         /*std::vector<uint8_t> bytes0x0f(20);
         RAND_bytes(bytes0x0f.data(), bytes0x0f.size());
         send_unchecked(Packet::Type::Unknown_0x0f, bytes0x0f);
 
-        utils::ByteArray preferred_locale;
+        ByteArray preferred_locale;
         preferred_locale.write_byte(0x00);
         preferred_locale.write_byte(0x00);
         preferred_locale.write_byte(0x10);
@@ -340,7 +367,7 @@ void Session::send_unchecked(Packet::Type cmd, std::string &payload) {
     cipher_pair->send_encoded(cmd, vector);
 }
 
-void Session::send(Packet::Type &cmd, std::vector<uint8_t> &payload) {
+void Session::send(Packet::Type cmd, std::vector<uint8_t> &payload) {
     if (/*closing || */conn == nullptr) {
         SPDLOG_DEBUG("Connection was broken while closing.");
         return;

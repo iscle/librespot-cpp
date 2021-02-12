@@ -21,6 +21,8 @@ public:
 private:
     static void populate_list(const char *params, const char *arr_name, std::vector<std::string> &list);
 
+    APResolver();
+
     std::vector<std::string> dealer_list;
     std::vector<std::string> spclient_list;
     std::vector<std::string> accesspoint_list;

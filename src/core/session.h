@@ -18,13 +18,11 @@
 #include "../crypto/diffie_hellman.h"
 #include "../dealer/dealer_client.h"
 #include "event_service.h"
+#include "../delayed_task.h"
+#include "../utils/byte_array.h"
 
 class Session {
 public:
-    bool running;
-    const std::shared_ptr<Connection> conn;
-    std::unique_ptr<CipherPair> cipher_pair;
-
     explicit Session(std::shared_ptr<Connection> connection);
 
     ~Session();
@@ -33,7 +31,7 @@ public:
 
     void authenticate(spotify::LoginCredentials &credentials);
 
-    void send(Packet::Type &cmd, std::vector<uint8_t> &payload);
+    void send(Packet::Type cmd, std::vector<uint8_t> &payload);
 
     const std::unique_ptr<MercuryClient> &mercury() const;
 
@@ -41,6 +39,8 @@ public:
 
     const std::unique_ptr<ChannelManager> &channel() const;
 
+    std::string country_code;
+    bool running;
 private:
     class Configuration {
 
@@ -64,9 +64,11 @@ private:
     //std::unique_ptr<SearchManager> search;
     //std::unique_ptr<PlayableContentFeeder> content_feeder;
     std::unique_ptr<EventService> event_service;
-    std::string country_code;
     volatile bool closed;
     volatile bool closing;
+    DelayedTask scheduled_reconnect;
+    const std::shared_ptr<Connection> conn;
+    std::unique_ptr<CipherPair> cipher_pair;
 
     void authenticate_partial(spotify::LoginCredentials &credentials, bool remove_lock);
 
@@ -74,17 +76,21 @@ private:
 
     void send_unchecked(Packet::Type cmd, std::string &payload);
 
-    void send_client_hello(utils::ByteArray &acc, DiffieHellman &dh);
+    void send_client_hello(ByteArray &acc, DiffieHellman &dh);
 
     static void check_gs_signature(spotify::APResponseMessage &response);
 
     static std::vector<uint8_t>
-    solve_challenge(utils::ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
-                    utils::ByteArray &data);
+    solve_challenge(ByteArray &acc, DiffieHellman &dh, spotify::APResponseMessage &response,
+                    ByteArray &data);
 
     void send_challenge_response(std::vector<uint8_t> &challenge);
 
     void read_connection_status();
+
+    void packet_receiver();
+
+    void reconnect();
 };
 
 #endif //LIBRESPOT_C_SESSION_H

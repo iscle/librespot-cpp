@@ -4,6 +4,7 @@
 
 #include <netdb.h>
 #include "cipher_pair.h"
+#include "../utils/byte_array.h"
 
 CipherPair::CipherPair(std::shared_ptr<Connection> connection, uint8_t *send_key, size_t send_key_size,
                        uint8_t *recv_key, size_t recv_key_size) :
@@ -17,7 +18,7 @@ void CipherPair::send_encoded(uint8_t cmd, std::vector<uint8_t> &payload) {
     unsigned int nonce = htonl(send_nonce++);
     shn_nonce(&send_cipher_ctx, (unsigned char *) &nonce, sizeof(nonce));
 
-    utils::ByteArray buffer;
+    ByteArray buffer;
     buffer.write_byte(cmd);
     buffer.write_short((short) payload.size());
     buffer.write(payload);

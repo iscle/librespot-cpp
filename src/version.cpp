@@ -24,5 +24,5 @@ void Version::system_info(spotify::SystemInfo *system_info) {
     system_info->set_os(spotify::OS_LINUX);
     system_info->set_cpu_family(spotify::CPU_X86_64);
     system_info->set_system_information_string(version_string() + " 0.0.1; C++11; Linux");
-    system_info->set_device_id(utils::generate_device_id());
+    system_info->set_device_id(generate_device_id());
 }

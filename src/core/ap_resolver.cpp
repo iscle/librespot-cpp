@@ -14,6 +14,8 @@
 #define SPCLIENTS_URL "?type=spclient"
 #define ACCESSPOINTS_URL "?type=accesspoint"
 
+APResolver::APResolver() = default;
+
 APResolver &APResolver::get_instance() {
     static APResolver instance;
     return instance;

@@ -24,7 +24,7 @@ void LibrespotCpp::start() {
     zeroconf.start([&session](std::string &device_id, std::string &username, std::vector<uint8_t> &payload) {
         if (session.running) return; // TODO: Fix me!
         SPDLOG_INFO("Zeroconf callback called!");
-        auto credentials = utils::decode_auth_blob(device_id, username, payload);
+        auto credentials = decode_auth_blob(device_id, username, payload);
         session.authenticate(credentials);
     });
 
